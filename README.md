@@ -10,6 +10,8 @@ This project is focused on a scalable POS core with clear architecture boundarie
 - Reactive state management with flutter_bloc
 - Dependency injection with get_it
 - Value equality with equatable
+- Local persistence for products and sales via Drift
+- Admin console for product management and sales review
 
 Current implemented flow:
 
@@ -18,6 +20,7 @@ Current implemented flow:
 - Reactive shopping cart updates
 - 10% tax total calculation
 - Checkout actions for cash and card
+- Admin product add/delete flow with local persistence and refresh
 
 ## Tech Stack
 
@@ -35,18 +38,25 @@ lib/features/pos/
 - data/
 	- datasources/
 		- product_remote_data_source.dart
+		- product_local_data_source.dart
+		- sales_local_data_source.dart
+		- pos_local_database.dart
 	- models/
 		- product_model.dart
 	- repositories/
 		- product_repository_impl.dart
+		- sales_repository_impl.dart
 - domain/
 	- entities/
 		- product.dart
 		- cart_entity.dart
+		- transaction_record.dart
 	- repositories/
 		- product_repository.dart
+		- sales_repository.dart
 	- usecases/
 		- calculate_total.dart
+		- save_transaction.dart
 - presentation/
 	- bloc/
 		- cart/
@@ -61,6 +71,7 @@ lib/features/pos/
 		- service_locator.dart
 	- views/
 		- pos_view.dart
+		- admin_home_view.dart
 
 Entrypoint:
 
@@ -73,11 +84,12 @@ Entrypoint:
 - ProductModel extends the Product entity
 - MockProductRemoteDataSource simulates remote product fetch
 - ProductRepositoryImpl maps datasource results to domain contracts
+- Drift-backed local data sources persist products and sales records
 
 ### Domain Layer
 
 - Entities: Product, CartItemEntity, CartEntity
-- Use case: CalculateTotal
+- Use cases: CalculateTotal, SaveTransaction
 	- Standard tax rate: 10%
 	- Totals exposed as subtotal, tax, total
 
@@ -94,6 +106,9 @@ Entrypoint:
 	- Responsive two-panel layout
 	- Left: product grid and search
 	- Right: cart list, totals, checkout actions
+- AdminHomeView:
+	- Product management tab for add/delete
+	- Sales tab for transaction history
 
 ## Getting Started
 
@@ -118,6 +133,11 @@ flutter analyze
 Run tests:
 
 flutter test
+
+Current validation status:
+
+- `flutter analyze` passes
+- `flutter test` passes
 
 ## Current Status and Planning
 

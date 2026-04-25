@@ -37,6 +37,14 @@ dependencies:
   flutter_bloc: ^9.1.1
   equatable: ^2.0.7
   get_it: ^8.0.3
+  drift: ^2.32.1
+  drift_flutter: ^0.3.0
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  pdf: ^3.12.0
+  printing: ^5.14.3
+  sqlite3_flutter_libs: ^0.6.0+eol
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:flutter_pos/features/admin/presentation/views/admin_home_view.dart';
+import 'package:flutter_pos/features/auth/domain/entities/app_user.dart';
+import 'package:flutter_pos/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:flutter_pos/features/auth/presentation/bloc/auth_event.dart';
+import 'package:flutter_pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:flutter_pos/features/auth/presentation/views/login_view.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/cart/cart_bloc.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_bloc.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_event.dart';
@@ -18,13 +24,8 @@ class POSApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<CartBloc>(create: (_) => sl<CartBloc>()),
-        BlocProvider<ProductCatalogBloc>(
-          create: (_) => sl<ProductCatalogBloc>()..add(const LoadProducts()),
-        ),
-      ],
+    return BlocProvider<AuthBloc>(
+      create: (_) => sl<AuthBloc>()..add(const AuthStarted()),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'POS Application',
@@ -32,8 +33,48 @@ class POSApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
           useMaterial3: true,
         ),
-        home: const POSView(),
+        home: const _AuthGate(),
       ),
+    );
+  }
+}
+
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        if (state.status == AuthStatus.loading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (state.status != AuthStatus.authenticated || state.user == null) {
+          return const LoginView();
+        }
+
+        if (state.user!.role == UserRole.admin) {
+          return const AdminHomeView();
+        }
+
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider<CartBloc>(create: (_) => sl<CartBloc>()),
+            BlocProvider<ProductCatalogBloc>(
+              create: (_) =>
+                  sl<ProductCatalogBloc>()..add(const LoadProducts()),
+            ),
+          ],
+          child: POSView(
+            onLogoutRequested: () {
+              context.read<AuthBloc>().add(const LogoutRequested());
+            },
+          ),
+        );
+      },
     );
   }
 }

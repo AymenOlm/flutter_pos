@@ -30,3 +30,16 @@ class RemoveItem extends CartEvent {
 class ClearCart extends CartEvent {
   const ClearCart();
 }
+
+class CheckoutSubmitted extends CartEvent {
+  const CheckoutSubmitted({required this.paymentMethod});
+
+  final String paymentMethod;
+
+  @override
+  List<Object?> get props => [paymentMethod];
+}
+
+class CheckoutStatusReset extends CartEvent {
+  const CheckoutStatusReset();
+}

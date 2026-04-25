@@ -9,36 +9,79 @@ import 'package:flutter_pos/features/pos/presentation/bloc/cart/cart_state.dart'
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_bloc.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_event.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_state.dart';
+import 'package:flutter_pos/features/pos/presentation/views/checkout_success_view.dart';
 
 class POSView extends StatelessWidget {
-  const POSView({super.key});
+  const POSView({super.key, this.onLogoutRequested});
+
+  final VoidCallback? onLogoutRequested;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('POS Console')),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 900;
+    return BlocListener<CartBloc, CartState>(
+      listenWhen: (previous, current) =>
+          previous.checkoutStatus != current.checkoutStatus,
+      listener: (context, state) async {
+        if (state.checkoutStatus == CheckoutStatus.failure &&
+            state.errorMessage != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+          context.read<CartBloc>().add(const CheckoutStatusReset());
+          return;
+        }
 
-          if (isDesktop) {
-            return Row(
-              children: const [
-                Expanded(flex: 2, child: _ProductPanel()),
-                VerticalDivider(width: 1),
-                Expanded(child: _CartPanel()),
-              ],
-            );
+        if (state.checkoutStatus == CheckoutStatus.success &&
+            state.lastTransaction != null) {
+          final transaction = state.lastTransaction!;
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CheckoutSuccessView(record: transaction),
+            ),
+          );
+
+          if (!context.mounted) {
+            return;
           }
 
-          return const Column(
-            children: [
-              Expanded(flex: 3, child: _ProductPanel()),
-              Divider(height: 1),
-              Expanded(flex: 2, child: _CartPanel()),
-            ],
-          );
-        },
+          context.read<CartBloc>().add(const CheckoutStatusReset());
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('POS Console'),
+          actions: [
+            if (onLogoutRequested != null)
+              IconButton(
+                onPressed: onLogoutRequested,
+                icon: const Icon(Icons.logout),
+                tooltip: 'Logout',
+              ),
+          ],
+        ),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= 900;
+
+            if (isDesktop) {
+              return Row(
+                children: const [
+                  Expanded(flex: 2, child: _ProductPanel()),
+                  VerticalDivider(width: 1),
+                  Expanded(child: _CartPanel()),
+                ],
+              );
+            }
+
+            return const Column(
+              children: [
+                Expanded(flex: 3, child: _ProductPanel()),
+                Divider(height: 1),
+                Expanded(flex: 2, child: _CartPanel()),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -278,23 +321,31 @@ class _TotalsSection extends StatelessWidget {
           children: [
             Expanded(
               child: FilledButton.tonal(
-                onPressed: state.cart.items.isEmpty
+                onPressed:
+                    state.cart.items.isEmpty ||
+                        state.checkoutStatus == CheckoutStatus.submitting
                     ? null
-                    : () => _checkout(context, 'Cash', state),
+                    : () => _checkout(context, 'Cash'),
                 child: const Text('Pay Cash'),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: FilledButton(
-                onPressed: state.cart.items.isEmpty
+                onPressed:
+                    state.cart.items.isEmpty ||
+                        state.checkoutStatus == CheckoutStatus.submitting
                     ? null
-                    : () => _checkout(context, 'Card', state),
+                    : () => _checkout(context, 'Card'),
                 child: const Text('Pay Card'),
               ),
             ),
           ],
         ),
+        if (state.checkoutStatus == CheckoutStatus.submitting) ...[
+          const SizedBox(height: 8),
+          const LinearProgressIndicator(),
+        ],
       ],
     );
   }
@@ -322,15 +373,7 @@ class _TotalsSection extends StatelessWidget {
     );
   }
 
-  void _checkout(BuildContext context, String method, CartState state) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$method checkout successful. Total: \$${state.totals.total.toStringAsFixed(2)}',
-        ),
-      ),
-    );
-
-    context.read<CartBloc>().add(const ClearCart());
+  void _checkout(BuildContext context, String method) {
+    context.read<CartBloc>().add(CheckoutSubmitted(paymentMethod: method));
   }
 }
