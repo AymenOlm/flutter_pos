@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:flutter_pos/core/logging/app_bloc_observer.dart';
+import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/features/admin/presentation/views/admin_home_view.dart';
 import 'package:flutter_pos/features/auth/domain/entities/app_user.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_bloc.dart';
@@ -16,6 +18,12 @@ import 'package:flutter_pos/features/pos/presentation/views/pos_view.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initPosDependencies();
+  Bloc.observer = AppBlocObserver(sl<AppLogger>());
+  sl<AppLogger>().info(
+    feature: 'app',
+    action: 'startup',
+    outcome: 'initialized',
+  );
   runApp(const POSApp());
 }
 

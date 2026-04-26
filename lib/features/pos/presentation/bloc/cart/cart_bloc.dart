@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:flutter_pos/core/logging/app_logger.dart';
+import 'package:flutter_pos/core/logging/correlation_id.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/save_transaction.dart';
@@ -10,8 +12,10 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   CartBloc({
     required CalculateTotal calculateTotal,
     required SaveTransaction saveTransaction,
+    required AppLogger logger,
   }) : _calculateTotal = calculateTotal,
        _saveTransaction = saveTransaction,
+       _logger = logger,
        super(CartState.initial()) {
     on<AddItem>(_onAddItem);
     on<RemoveItem>(_onRemoveItem);
@@ -22,6 +26,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
   final CalculateTotal _calculateTotal;
   final SaveTransaction _saveTransaction;
+  final AppLogger _logger;
 
   void _onAddItem(AddItem event, Emitter<CartState> emit) {
     final updatedCart = state.cart.addItem(event.product);
@@ -42,8 +47,16 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     Emitter<CartState> emit,
   ) async {
     if (state.cart.items.isEmpty) {
+      _logger.warning(
+        feature: 'checkout',
+        action: 'submit',
+        outcome: 'blocked_empty_cart',
+        errorCode: 'CHECKOUT_EMPTY_CART',
+      );
       return;
     }
+
+    final correlationId = CorrelationId.create(prefix: 'checkout');
 
     emit(
       state.copyWith(
@@ -61,6 +74,18 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         ),
       );
 
+      _logger.info(
+        feature: 'checkout',
+        action: 'save_transaction',
+        outcome: 'success',
+        correlationId: correlationId,
+        context: <String, Object?>{
+          'paymentMethod': event.paymentMethod,
+          'itemCount': state.cart.items.length,
+          'total': state.totals.total,
+        },
+      );
+
       const emptyCart = CartEntity();
       emit(
         state.copyWith(
@@ -71,7 +96,21 @@ class CartBloc extends Bloc<CartEvent, CartState> {
           clearErrorMessage: true,
         ),
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.error(
+        feature: 'checkout',
+        action: 'save_transaction',
+        outcome: 'failed',
+        correlationId: correlationId,
+        errorCode: 'CHECKOUT_SAVE_FAILED',
+        context: <String, Object?>{
+          'paymentMethod': event.paymentMethod,
+          'itemCount': state.cart.items.length,
+          'total': state.totals.total,
+        },
+        error: error,
+        stackTrace: stackTrace,
+      );
       emit(
         state.copyWith(
           checkoutStatus: CheckoutStatus.failure,

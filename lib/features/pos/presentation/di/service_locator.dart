@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 
+import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/core/utils/receipt_service.dart';
 import 'package:flutter_pos/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:flutter_pos/features/auth/data/repositories/auth_repository_impl.dart';
@@ -24,6 +25,22 @@ import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/produ
 final sl = GetIt.instance;
 
 Future<void> initPosDependencies() async {
+  if (!sl.isRegistered<AppLogSink>()) {
+    sl.registerLazySingleton<AppLogSink>(ConsoleAppLogSink.new);
+  }
+
+  if (!sl.isRegistered<BufferedAppLogSink>()) {
+    sl.registerLazySingleton(BufferedAppLogSink.new);
+  }
+
+  if (!sl.isRegistered<AppLogger>()) {
+    sl.registerLazySingleton<AppLogger>(
+      () => AppLogger(
+        sinks: <AppLogSink>[sl<AppLogSink>(), sl<BufferedAppLogSink>()],
+      ),
+    );
+  }
+
   if (!sl.isRegistered<AuthLocalDataSource>()) {
     sl.registerLazySingleton<AuthLocalDataSource>(
       SharedPrefsAuthLocalDataSource.new,
@@ -102,13 +119,17 @@ Future<void> initPosDependencies() async {
       () => CartBloc(
         calculateTotal: sl<CalculateTotal>(),
         saveTransaction: sl<SaveTransaction>(),
+        logger: sl<AppLogger>(),
       ),
     );
   }
 
   if (!sl.isRegistered<ProductCatalogBloc>()) {
     sl.registerFactory(
-      () => ProductCatalogBloc(repository: sl<ProductRepository>()),
+      () => ProductCatalogBloc(
+        repository: sl<ProductRepository>(),
+        logger: sl<AppLogger>(),
+      ),
     );
   }
 
