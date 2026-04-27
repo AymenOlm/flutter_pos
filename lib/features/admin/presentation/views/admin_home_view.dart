@@ -7,6 +7,7 @@ import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
 import 'package:flutter_pos/features/pos/domain/repositories/product_repository.dart';
 import 'package:flutter_pos/features/pos/domain/repositories/sales_repository.dart';
+import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
 import 'package:flutter_pos/features/pos/presentation/di/service_locator.dart';
 
 class AdminHomeView extends StatefulWidget {
@@ -307,7 +308,7 @@ class _SalesTab extends StatelessWidget {
             return ListTile(
               title: Text('Transaction #${sale.id}'),
               subtitle: Text(
-                '${sale.paymentMethod} • ${sale.createdAt.toLocal()}\nItems: ${sale.cart.items.length}',
+                '${sale.paymentMethod} • ${sale.createdAt.toLocal()}\nItems: ${sale.cart.items.length} • Discount: ${sale.discountAmount > 0 ? sale.discountType.displayName : 'none'}',
               ),
               trailing: Text('\$${sale.total.toStringAsFixed(2)}'),
             );

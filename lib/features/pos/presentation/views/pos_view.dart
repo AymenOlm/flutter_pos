@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
+import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/cart/cart_bloc.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/cart/cart_event.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/cart/cart_state.dart';
@@ -312,7 +313,15 @@ class _TotalsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _DiscountControls(state: state),
+        const SizedBox(height: 12),
         _amountRow('Subtotal', state.totals.subtotal),
+        if (state.totals.discountAmount > 0)
+          _amountRow(
+            'Discount (${state.discount.type.displayName})',
+            state.totals.discountAmount,
+            isNegative: true,
+          ),
         _amountRow('Tax (10%)', state.totals.tax),
         const Divider(),
         _amountRow('Total', state.totals.total, isEmphasis: true),
@@ -350,7 +359,12 @@ class _TotalsSection extends StatelessWidget {
     );
   }
 
-  Widget _amountRow(String label, double amount, {bool isEmphasis = false}) {
+  Widget _amountRow(
+    String label,
+    double amount, {
+    bool isEmphasis = false,
+    bool isNegative = false,
+  }) {
     return Builder(
       builder: (context) {
         final style = isEmphasis
@@ -365,7 +379,10 @@ class _TotalsSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(label, style: style),
-              Text('\$${amount.toStringAsFixed(2)}', style: style),
+              Text(
+                '${isNegative ? '-' : ''}\$${amount.toStringAsFixed(2)}',
+                style: style,
+              ),
             ],
           ),
         );
@@ -375,5 +392,136 @@ class _TotalsSection extends StatelessWidget {
 
   void _checkout(BuildContext context, String method) {
     context.read<CartBloc>().add(CheckoutSubmitted(paymentMethod: method));
+  }
+}
+
+class _DiscountControls extends StatefulWidget {
+  const _DiscountControls({required this.state});
+
+  final CartState state;
+
+  @override
+  State<_DiscountControls> createState() => _DiscountControlsState();
+}
+
+class _DiscountControlsState extends State<_DiscountControls> {
+  late final TextEditingController _amountController;
+  late DiscountType _selectedType;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedType = widget.state.discount.type;
+    _amountController = TextEditingController(
+      text: widget.state.discount.value > 0
+          ? widget.state.discount.value.toStringAsFixed(2)
+          : '',
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _DiscountControls oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.discount != widget.state.discount) {
+      _selectedType = widget.state.discount.type;
+      _amountController.text = widget.state.discount.value > 0
+          ? widget.state.discount.value.toStringAsFixed(2)
+          : '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  void _dispatchDiscount() {
+    final parsedValue = double.tryParse(_amountController.text.trim()) ?? 0;
+    context.read<CartBloc>().add(
+      DiscountChanged(
+        discount: CartDiscount(type: _selectedType, value: parsedValue),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPercentage = _selectedType == DiscountType.percentage;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Discount', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                DropdownButton<DiscountType>(
+                  value: _selectedType,
+                  onChanged: (value) {
+                    if (value == null) {
+                      return;
+                    }
+
+                    setState(() {
+                      _selectedType = value;
+                    });
+                    _dispatchDiscount();
+                  },
+                  items: const [
+                    DropdownMenuItem(
+                      value: DiscountType.fixed,
+                      child: Text('Fixed'),
+                    ),
+                    DropdownMenuItem(
+                      value: DiscountType.percentage,
+                      child: Text('Percentage'),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _amountController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: isPercentage
+                          ? 'Discount percentage'
+                          : 'Discount amount',
+                      prefixText: isPercentage ? null : '\$',
+                      suffixText: isPercentage ? '%' : null,
+                    ),
+                    onChanged: (_) => _dispatchDiscount(),
+                  ),
+                ),
+              ],
+            ),
+            if (widget.state.totals.discountAmount > 0) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedType = DiscountType.fixed;
+                      _amountController.clear();
+                    });
+                    context.read<CartBloc>().add(
+                      const DiscountChanged(discount: CartDiscount.none()),
+                    );
+                  },
+                  child: const Text('Clear discount'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }

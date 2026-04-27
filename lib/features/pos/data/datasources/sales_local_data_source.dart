@@ -6,6 +6,7 @@ import 'package:flutter_pos/features/pos/data/datasources/pos_local_database.dar
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
+import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
 
 abstract class SalesLocalDataSource {
   Future<void> saveTransaction(TransactionRecord record);
@@ -40,16 +41,22 @@ class DriftSalesLocalDataSource implements SalesLocalDataSource {
         created_at,
         payment_method,
         subtotal,
+        discount_type,
+        discount_value,
+        discount_amount,
         tax,
         total,
         items_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''',
       [
         record.id,
         record.createdAt.toIso8601String(),
         record.paymentMethod,
         record.subtotal,
+        record.discountType.name,
+        record.discountValue,
+        record.discountAmount,
         record.tax,
         record.total,
         itemsJson,
@@ -66,6 +73,9 @@ class DriftSalesLocalDataSource implements SalesLocalDataSource {
         created_at,
         payment_method,
         subtotal,
+        discount_type,
+        discount_value,
+        discount_amount,
         tax,
         total,
         items_json
@@ -100,8 +110,18 @@ class DriftSalesLocalDataSource implements SalesLocalDataSource {
       paymentMethod: row.read<String>('payment_method'),
       cart: CartEntity(items: cartItems),
       subtotal: row.read<double>('subtotal'),
+      discountType: _discountTypeFromName(row.read<String>('discount_type')),
+      discountValue: row.read<double>('discount_value'),
+      discountAmount: row.read<double>('discount_amount'),
       tax: row.read<double>('tax'),
       total: row.read<double>('total'),
+    );
+  }
+
+  DiscountType _discountTypeFromName(String name) {
+    return DiscountType.values.firstWhere(
+      (value) => value.name == name,
+      orElse: () => DiscountType.fixed,
     );
   }
 }

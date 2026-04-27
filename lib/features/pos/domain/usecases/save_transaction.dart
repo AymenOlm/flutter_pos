@@ -9,15 +9,17 @@ class SaveTransactionParams extends Equatable {
   const SaveTransactionParams({
     required this.cart,
     required this.totals,
+    required this.discount,
     required this.paymentMethod,
   });
 
   final CartEntity cart;
   final CartTotals totals;
+  final CartDiscount discount;
   final String paymentMethod;
 
   @override
-  List<Object?> get props => [cart, totals, paymentMethod];
+  List<Object?> get props => [cart, totals, discount, paymentMethod];
 }
 
 class SaveTransaction {
@@ -32,6 +34,9 @@ class SaveTransaction {
       paymentMethod: params.paymentMethod,
       cart: params.cart,
       subtotal: params.totals.subtotal,
+      discountType: params.discount.type,
+      discountValue: params.discount.value,
+      discountAmount: params.totals.discountAmount,
       tax: params.totals.tax,
       total: params.totals.total,
     );

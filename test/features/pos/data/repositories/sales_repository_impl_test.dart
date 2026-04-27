@@ -5,6 +5,7 @@ import 'package:flutter_pos/features/pos/data/repositories/sales_repository_impl
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
+import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
 
 class _FakeSalesLocalDataSource implements SalesLocalDataSource {
   final List<TransactionRecord> savedRecords = <TransactionRecord>[];
@@ -37,6 +38,9 @@ void main() {
           ],
         ),
         subtotal: 3.50,
+        discountType: DiscountType.fixed,
+        discountValue: 0,
+        discountAmount: 0,
         tax: 0.35,
         total: 3.85,
       );
@@ -55,6 +59,9 @@ void main() {
           paymentMethod: 'cash',
           cart: const CartEntity(),
           subtotal: 0,
+          discountType: DiscountType.fixed,
+          discountValue: 0,
+          discountAmount: 0,
           tax: 0,
           total: 0,
         ),

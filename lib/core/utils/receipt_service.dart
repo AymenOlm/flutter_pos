@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
+import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
 
 enum ReceiptPaperSize { mm58, mm80 }
 
@@ -80,6 +81,12 @@ class ReceiptService {
         ),
         pw.Divider(),
         _amountRow('Subtotal', record.subtotal, textStyle),
+        if (record.discountAmount > 0)
+          _amountRow(
+            'Discount (${record.discountType.displayName})',
+            -record.discountAmount,
+            textStyle,
+          ),
         _amountRow('Tax', record.tax, textStyle),
         _amountRow(
           'Total',

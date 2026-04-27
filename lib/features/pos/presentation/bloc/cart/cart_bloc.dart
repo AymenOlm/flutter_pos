@@ -20,6 +20,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<AddItem>(_onAddItem);
     on<RemoveItem>(_onRemoveItem);
     on<ClearCart>(_onClearCart);
+    on<DiscountChanged>(_onDiscountChanged);
     on<CheckoutSubmitted>(_onCheckoutSubmitted);
     on<CheckoutStatusReset>(_onCheckoutStatusReset);
   }
@@ -39,7 +40,15 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   }
 
   void _onClearCart(ClearCart event, Emitter<CartState> emit) {
-    _emitUpdatedState(emit, state.cart.clear());
+    emit(
+      state.copyWith(
+        cart: const CartEntity(),
+        totals: _calculateTotal(const CartEntity()),
+        discount: const CartDiscount.none(),
+        checkoutStatus: CheckoutStatus.idle,
+        clearErrorMessage: true,
+      ),
+    );
   }
 
   Future<void> _onCheckoutSubmitted(
@@ -70,6 +79,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         SaveTransactionParams(
           cart: state.cart,
           totals: state.totals,
+          discount: state.discount,
           paymentMethod: event.paymentMethod,
         ),
       );
@@ -91,6 +101,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         state.copyWith(
           cart: emptyCart,
           totals: _calculateTotal(emptyCart),
+          discount: const CartDiscount.none(),
           checkoutStatus: CheckoutStatus.success,
           lastTransaction: record,
           clearErrorMessage: true,
@@ -134,11 +145,22 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     );
   }
 
+  void _onDiscountChanged(DiscountChanged event, Emitter<CartState> emit) {
+    emit(
+      state.copyWith(
+        discount: event.discount,
+        totals: _calculateTotal(state.cart, discount: event.discount),
+        checkoutStatus: CheckoutStatus.idle,
+        clearErrorMessage: true,
+      ),
+    );
+  }
+
   void _emitUpdatedState(Emitter<CartState> emit, CartEntity cart) {
     emit(
       state.copyWith(
         cart: cart,
-        totals: _calculateTotal(cart),
+        totals: _calculateTotal(cart, discount: state.discount),
         checkoutStatus: CheckoutStatus.idle,
         clearErrorMessage: true,
       ),

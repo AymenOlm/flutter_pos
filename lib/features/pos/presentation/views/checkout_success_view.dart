@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_pos/core/utils/receipt_service.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
+import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
 import 'package:flutter_pos/features/pos/presentation/di/service_locator.dart';
 
 class CheckoutSuccessView extends StatelessWidget {
@@ -25,6 +26,8 @@ class CheckoutSuccessView extends StatelessWidget {
             const SizedBox(height: 12),
             Text('Transaction ID: ${record.id}'),
             Text('Payment Method: ${record.paymentMethod}'),
+            if (record.discountAmount > 0)
+              Text('Discount: ${_discountSummary(record)}'),
             Text('Total: \$${record.total.toStringAsFixed(2)}'),
             const Spacer(),
             FilledButton.icon(
@@ -56,6 +59,15 @@ class CheckoutSuccessView extends StatelessWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Unable to print receipt.')));
+    }
+  }
+
+  String _discountSummary(TransactionRecord record) {
+    switch (record.discountType) {
+      case DiscountType.fixed:
+        return '${record.discountType.displayName} \$${record.discountValue.toStringAsFixed(2)}';
+      case DiscountType.percentage:
+        return '${record.discountType.displayName} ${record.discountValue.toStringAsFixed(0)}%';
     }
   }
 }

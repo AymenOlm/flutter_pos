@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
+import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
 
 class TransactionRecord extends Equatable {
   const TransactionRecord({
@@ -9,6 +10,9 @@ class TransactionRecord extends Equatable {
     required this.paymentMethod,
     required this.cart,
     required this.subtotal,
+    required this.discountType,
+    required this.discountValue,
+    required this.discountAmount,
     required this.tax,
     required this.total,
   });
@@ -18,6 +22,9 @@ class TransactionRecord extends Equatable {
   final String paymentMethod;
   final CartEntity cart;
   final double subtotal;
+  final DiscountType discountType;
+  final double discountValue;
+  final double discountAmount;
   final double tax;
   final double total;
 
@@ -28,6 +35,9 @@ class TransactionRecord extends Equatable {
     paymentMethod,
     cart,
     subtotal,
+    discountType,
+    discountValue,
+    discountAmount,
     tax,
     total,
   ];

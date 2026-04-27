@@ -37,12 +37,14 @@ void main() {
           ),
         ],
       );
-      const totals = CartTotals(subtotal: 9.75, tax: 0.98, total: 10.73);
+      const discount = CartDiscount(type: DiscountType.fixed, value: 2.00);
+      final totals = CalculateTotal()(cart, discount: discount);
 
       final result = await useCase(
         SaveTransactionParams(
           cart: cart,
           totals: totals,
+          discount: discount,
           paymentMethod: 'cash',
         ),
       );
@@ -52,8 +54,11 @@ void main() {
       expect(result.cart, cart);
       expect(result.paymentMethod, 'cash');
       expect(result.subtotal, 9.75);
-      expect(result.tax, 0.98);
-      expect(result.total, 10.73);
+      expect(result.discountType, DiscountType.fixed);
+      expect(result.discountValue, 2.00);
+      expect(result.discountAmount, 2.00);
+      expect(result.tax, closeTo(0.775, 0.0001));
+      expect(result.total, closeTo(8.525, 0.0001));
       expect(result.id, isNotEmpty);
     });
   });
