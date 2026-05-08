@@ -50,13 +50,15 @@ class POSView extends StatelessWidget {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('POS Console'),
+          title: Semantics(header: true, child: Text('POS Console')),
           actions: [
             if (onLogoutRequested != null)
               IconButton(
                 onPressed: onLogoutRequested,
-                icon: const Icon(Icons.logout),
+                icon: const Icon(Icons.logout, semanticLabel: 'Logout'),
                 tooltip: 'Logout',
+                padding: const EdgeInsets.all(12),
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               ),
           ],
         ),
@@ -99,9 +101,11 @@ class _ProductPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextField(
+            textInputAction: TextInputAction.search,
             decoration: const InputDecoration(
               labelText: 'Search products',
-              prefixIcon: Icon(Icons.search),
+              hintText: 'Search products by name',
+              prefixIcon: Icon(Icons.search, semanticLabel: 'Search'),
             ),
             onChanged: (value) {
               context.read<ProductCatalogBloc>().add(SearchProducts(value));
@@ -166,30 +170,38 @@ class _ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          context.read<CartBloc>().add(AddItem(product));
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                product.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('\$${product.price.toStringAsFixed(2)}'),
-                  const Icon(Icons.add_shopping_cart),
-                ],
-              ),
-            ],
+      child: Semantics(
+        button: true,
+        label:
+            '${product.name}, \$${product.price.toStringAsFixed(2)}. Tap to add to cart.',
+        child: InkWell(
+          onTap: () {
+            context.read<CartBloc>().add(AddItem(product));
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  product.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('\$${product.price.toStringAsFixed(2)}'),
+                    const Icon(
+                      Icons.add_shopping_cart,
+                      semanticLabel: 'Add to cart',
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -255,12 +267,18 @@ class _CartHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('Cart', style: Theme.of(context).textTheme.headlineSmall),
-        TextButton(
-          onPressed: state.cart.items.isEmpty
-              ? null
-              : () => context.read<CartBloc>().add(const ClearCart()),
-          child: const Text('Clear'),
+        Semantics(
+          header: true,
+          child: Text('Cart', style: Theme.of(context).textTheme.headlineSmall),
+        ),
+        Tooltip(
+          message: 'Clear cart',
+          child: TextButton(
+            onPressed: state.cart.items.isEmpty
+                ? null
+                : () => context.read<CartBloc>().add(const ClearCart()),
+            child: const Text('Clear'),
+          ),
         ),
       ],
     );
@@ -293,7 +311,13 @@ class _CartItemsList extends StatelessWidget {
                 onPressed: () {
                   context.read<CartBloc>().add(RemoveItem(item.product));
                 },
-                icon: const Icon(Icons.remove_circle_outline),
+                icon: const Icon(
+                  Icons.remove_circle_outline,
+                  semanticLabel: 'Remove item',
+                ),
+                tooltip: 'Remove ${item.product.name}',
+                padding: const EdgeInsets.all(12),
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               ),
             ],
           ),
@@ -329,24 +353,42 @@ class _TotalsSection extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: FilledButton.tonal(
-                onPressed:
-                    state.cart.items.isEmpty ||
-                        state.checkoutStatus == CheckoutStatus.submitting
-                    ? null
-                    : () => _checkout(context, 'Cash'),
-                child: const Text('Pay Cash'),
+              child: Semantics(
+                button: true,
+                label:
+                    'Pay cash, total ${state.totals.total.toStringAsFixed(2)} dollars',
+                child: FilledButton.tonal(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed:
+                      state.cart.items.isEmpty ||
+                          state.checkoutStatus == CheckoutStatus.submitting
+                      ? null
+                      : () => _checkout(context, 'Cash'),
+                  child: const Text('Pay Cash'),
+                ),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: FilledButton(
-                onPressed:
-                    state.cart.items.isEmpty ||
-                        state.checkoutStatus == CheckoutStatus.submitting
-                    ? null
-                    : () => _checkout(context, 'Card'),
-                child: const Text('Pay Card'),
+              child: Semantics(
+                button: true,
+                label:
+                    'Pay by card, total ${state.totals.total.toStringAsFixed(2)} dollars',
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed:
+                      state.cart.items.isEmpty ||
+                          state.checkoutStatus == CheckoutStatus.submitting
+                      ? null
+                      : () => _checkout(context, 'Card'),
+                  child: const Text('Pay Card'),
+                ),
               ),
             ),
           ],
@@ -455,7 +497,13 @@ class _DiscountControlsState extends State<_DiscountControls> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Discount', style: Theme.of(context).textTheme.titleMedium),
+            Semantics(
+              header: true,
+              child: Text(
+                'Discount',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
