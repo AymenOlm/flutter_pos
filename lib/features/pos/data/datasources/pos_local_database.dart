@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
@@ -10,20 +11,35 @@ class PosLocalDatabase {
 
   final String dbFileName;
   GeneratedDatabase? _database;
+  Completer<GeneratedDatabase>? _databaseCompleter;
 
   Future<GeneratedDatabase> get database async {
     if (_database != null) {
       return _database!;
     }
 
-    final documents = await getApplicationDocumentsDirectory();
-    final dbFile = File(p.join(documents.path, dbFileName));
-    final executor = NativeDatabase.createInBackground(dbFile);
-    final db = _PosGeneratedDatabase(executor, _createSchema);
+    // Ensure only one initialization happens even with concurrent access
+    if (_databaseCompleter != null) {
+      return _databaseCompleter!.future;
+    }
 
-    await _createSchema(db);
-    _database = db;
-    return db;
+    _databaseCompleter = Completer<GeneratedDatabase>();
+
+    try {
+      final documents = await getApplicationDocumentsDirectory();
+      final dbFile = File(p.join(documents.path, dbFileName));
+      final executor = NativeDatabase.createInBackground(dbFile);
+      final db = _PosGeneratedDatabase(executor, _createSchema);
+
+      await _createSchema(db);
+      _database = db;
+      _databaseCompleter!.complete(db);
+      return db;
+    } catch (e) {
+      _databaseCompleter!.completeError(e);
+      _databaseCompleter = null;
+      rethrow;
+    }
   }
 
   Future<void> _createSchema(GeneratedDatabase db) async {
