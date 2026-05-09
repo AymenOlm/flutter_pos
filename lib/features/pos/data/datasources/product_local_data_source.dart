@@ -20,8 +20,8 @@ class DriftProductLocalDataSource implements ProductLocalDataSource {
     await db.transaction(() async {
       for (final product in products) {
         await db.customStatement(
-          'INSERT OR REPLACE INTO products (id, name, price) VALUES (?, ?, ?)',
-          [product.id, product.name, product.price],
+          'INSERT OR REPLACE INTO products (id, name, price, category) VALUES (?, ?, ?, ?)',
+          [product.id, product.name, product.price, product.category],
         );
       }
     });
@@ -31,7 +31,9 @@ class DriftProductLocalDataSource implements ProductLocalDataSource {
   Future<List<ProductModel>> getCachedProducts() async {
     final db = await localDatabase.database;
     final rows = await db
-        .customSelect('SELECT id, name, price FROM products ORDER BY name ASC')
+        .customSelect(
+          'SELECT id, name, price, category FROM products ORDER BY name ASC',
+        )
         .get();
 
     return rows
@@ -40,6 +42,7 @@ class DriftProductLocalDataSource implements ProductLocalDataSource {
             id: row.read<String>('id'),
             name: row.read<String>('name'),
             price: row.read<double>('price'),
+            category: row.read<String>('category'),
           ),
         )
         .toList(growable: false);
@@ -49,8 +52,8 @@ class DriftProductLocalDataSource implements ProductLocalDataSource {
   Future<void> upsertProduct(ProductModel product) async {
     final db = await localDatabase.database;
     await db.customStatement(
-      'INSERT OR REPLACE INTO products (id, name, price) VALUES (?, ?, ?)',
-      [product.id, product.name, product.price],
+      'INSERT OR REPLACE INTO products (id, name, price, category) VALUES (?, ?, ?, ?)',
+      [product.id, product.name, product.price, product.category],
     );
   }
 

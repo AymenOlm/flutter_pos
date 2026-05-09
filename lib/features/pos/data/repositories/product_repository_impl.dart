@@ -37,7 +37,12 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Future<void> upsertProduct(Product product) {
     return localDataSource.upsertProduct(
-      ProductModel(id: product.id, name: product.name, price: product.price),
+      ProductModel(
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        category: product.category,
+      ),
     );
   }
 

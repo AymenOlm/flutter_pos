@@ -10,6 +10,7 @@ class ProductCatalogState extends Equatable {
     required this.products,
     required this.filteredProducts,
     required this.query,
+    required this.selectedCategory,
     this.message,
   });
 
@@ -19,6 +20,7 @@ class ProductCatalogState extends Equatable {
       products: <Product>[],
       filteredProducts: <Product>[],
       query: '',
+      selectedCategory: 'All',
     );
   }
 
@@ -26,6 +28,7 @@ class ProductCatalogState extends Equatable {
   final List<Product> products;
   final List<Product> filteredProducts;
   final String query;
+  final String selectedCategory;
   final String? message;
 
   ProductCatalogState copyWith({
@@ -33,6 +36,7 @@ class ProductCatalogState extends Equatable {
     List<Product>? products,
     List<Product>? filteredProducts,
     String? query,
+    String? selectedCategory,
     String? message,
   }) {
     return ProductCatalogState(
@@ -40,6 +44,7 @@ class ProductCatalogState extends Equatable {
       products: products ?? this.products,
       filteredProducts: filteredProducts ?? this.filteredProducts,
       query: query ?? this.query,
+      selectedCategory: selectedCategory ?? this.selectedCategory,
       message: message,
     );
   }
@@ -50,6 +55,7 @@ class ProductCatalogState extends Equatable {
     products,
     filteredProducts,
     query,
+    selectedCategory,
     message,
   ];
 }

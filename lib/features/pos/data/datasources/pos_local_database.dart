@@ -47,7 +47,8 @@ class PosLocalDatabase {
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        price REAL NOT NULL
+        price REAL NOT NULL,
+        category TEXT NOT NULL DEFAULT 'General'
       )
     ''');
 
@@ -84,6 +85,12 @@ class PosLocalDatabase {
       columnName: 'discount_amount',
       columnDefinition: 'REAL NOT NULL DEFAULT 0',
     );
+    await _ensureColumn(
+      db,
+      tableName: 'products',
+      columnName: 'category',
+      columnDefinition: "TEXT NOT NULL DEFAULT 'General'",
+    );
   }
 
   Future<void> _ensureColumn(
@@ -117,7 +124,7 @@ class _PosGeneratedDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   Iterable<TableInfo> get allTables => const [];

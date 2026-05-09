@@ -28,6 +28,7 @@ class DriftSalesLocalDataSource implements SalesLocalDataSource {
               'productId': item.product.id,
               'name': item.product.name,
               'price': item.product.price,
+              'category': item.product.category,
               'quantity': item.quantity,
             },
           )
@@ -96,6 +97,7 @@ class DriftSalesLocalDataSource implements SalesLocalDataSource {
             id: json['productId'] as String,
             name: json['name'] as String,
             price: (json['price'] as num).toDouble(),
+            category: (json['category'] as String?) ?? Product.defaultCategory,
           );
           return CartItemEntity(
             product: product,

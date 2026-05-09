@@ -16,6 +16,7 @@ class ProductCatalogBloc
        super(ProductCatalogState.initial()) {
     on<LoadProducts>(_onLoadProducts);
     on<SearchProducts>(_onSearchProducts);
+    on<SelectProductCategory>(_onSelectProductCategory);
   }
 
   final ProductRepository _repository;
@@ -33,7 +34,11 @@ class ProductCatalogBloc
         state.copyWith(
           status: ProductCatalogStatus.loaded,
           products: products,
-          filteredProducts: products,
+          filteredProducts: _applyFilters(
+            products: products,
+            query: state.query,
+            selectedCategory: state.selectedCategory,
+          ),
         ),
       );
     } catch (error, stackTrace) {
@@ -61,19 +66,52 @@ class ProductCatalogBloc
     SearchProducts event,
     Emitter<ProductCatalogState> emit,
   ) {
-    final query = event.query.trim().toLowerCase();
-    final filtered = _filterProducts(state.products, query);
-
-    emit(state.copyWith(query: event.query, filteredProducts: filtered));
+    emit(
+      state.copyWith(
+        query: event.query,
+        filteredProducts: _applyFilters(
+          products: state.products,
+          query: event.query,
+          selectedCategory: state.selectedCategory,
+        ),
+      ),
+    );
   }
 
-  List<Product> _filterProducts(List<Product> products, String query) {
-    if (query.isEmpty) {
-      return products;
-    }
+  void _onSelectProductCategory(
+    SelectProductCategory event,
+    Emitter<ProductCatalogState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        selectedCategory: event.category,
+        filteredProducts: _applyFilters(
+          products: state.products,
+          query: state.query,
+          selectedCategory: event.category,
+        ),
+      ),
+    );
+  }
+
+  List<Product> _applyFilters({
+    required List<Product> products,
+    required String query,
+    required String selectedCategory,
+  }) {
+    final normalizedQuery = query.trim().toLowerCase();
+    final normalizedCategory = selectedCategory.trim().toLowerCase();
 
     return products
-        .where((product) => product.name.toLowerCase().contains(query))
+        .where((product) {
+          final matchesQuery =
+              normalizedQuery.isEmpty ||
+              product.name.toLowerCase().contains(normalizedQuery);
+          final matchesCategory =
+              normalizedCategory == 'all' ||
+              product.category.toLowerCase() == normalizedCategory;
+          return matchesQuery && matchesCategory;
+        })
         .toList(growable: false);
   }
 }

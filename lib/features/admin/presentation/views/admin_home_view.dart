@@ -1659,6 +1659,9 @@ class _ProductManagementTab extends StatefulWidget {
 class _ProductManagementTabState extends State<_ProductManagementTab> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
+  final _categoryController = TextEditingController(
+    text: Product.defaultCategory,
+  );
   bool _loading = false;
   late Future<List<Product>> _productsFuture;
 
@@ -1672,6 +1675,7 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
   void dispose() {
     _nameController.dispose();
     _priceController.dispose();
+    _categoryController.dispose();
     super.dispose();
   }
 
@@ -1708,6 +1712,14 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  SizedBox(
+                    width: 180,
+                    child: TextField(
+                      controller: _categoryController,
+                      decoration: const InputDecoration(labelText: 'Category'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _loading ? null : () => _addProduct(context),
                     child: const Text('Add'),
@@ -1724,7 +1736,9 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
                     final product = products[index];
                     return ListTile(
                       title: Text(product.name),
-                      subtitle: Text('\$${product.price.toStringAsFixed(2)}'),
+                      subtitle: Text(
+                        '${product.category} • \$${product.price.toStringAsFixed(2)}',
+                      ),
                       trailing: IconButton(
                         onPressed: () async {
                           await sl<ProductRepository>().deleteProduct(
@@ -1753,8 +1767,9 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
   Future<void> _addProduct(BuildContext context) async {
     final name = _nameController.text.trim();
     final price = double.tryParse(_priceController.text.trim());
+    final category = _categoryController.text.trim();
 
-    if (name.isEmpty || price == null || price <= 0) {
+    if (name.isEmpty || price == null || price <= 0 || category.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter valid product data.')),
       );
@@ -1769,6 +1784,7 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           name: name,
           price: price,
+          category: category,
         ),
       );
 
@@ -1778,6 +1794,7 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
 
       _nameController.clear();
       _priceController.clear();
+      _categoryController.text = Product.defaultCategory;
       setState(() {
         _productsFuture = sl<ProductRepository>().getProducts();
       });

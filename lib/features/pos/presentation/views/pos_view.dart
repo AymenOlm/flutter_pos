@@ -126,8 +126,28 @@ class _ProductPanel extends StatelessWidget {
                   );
                 }
 
+                final categories = _buildCategories(state.products);
+
                 if (state.filteredProducts.isEmpty) {
-                  return const Center(child: Text('No products found.'));
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _CategoryChips(
+                        categories: categories,
+                        selectedCategory: state.selectedCategory,
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            state.products.isEmpty
+                                ? 'No products available.'
+                                : 'No products match the selected filters.',
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
                 }
 
                 return LayoutBuilder(
@@ -137,18 +157,31 @@ class _ProductPanel extends StatelessWidget {
                         .floor()
                         .clamp(2, 5);
 
-                    return GridView.builder(
-                      itemCount: state.filteredProducts.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: columns,
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        childAspectRatio: 1.25,
-                      ),
-                      itemBuilder: (context, index) {
-                        final product = state.filteredProducts[index];
-                        return _ProductCard(product: product);
-                      },
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _CategoryChips(
+                          categories: categories,
+                          selectedCategory: state.selectedCategory,
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: GridView.builder(
+                            itemCount: state.filteredProducts.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columns,
+                                  mainAxisSpacing: 10,
+                                  crossAxisSpacing: 10,
+                                  childAspectRatio: 1.25,
+                                ),
+                            itemBuilder: (context, index) {
+                              final product = state.filteredProducts[index];
+                              return _ProductCard(product: product);
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
                 );
@@ -184,11 +217,43 @@ class _ProductCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  product.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Chip(
+                      label: Text(product.category),
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 72,
+                  child: Center(
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.image,
+                        size: 36,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -207,6 +272,57 @@ class _ProductCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _CategoryChips extends StatelessWidget {
+  const _CategoryChips({
+    required this.categories,
+    required this.selectedCategory,
+  });
+
+  final List<String> categories;
+  final String selectedCategory;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        ChoiceChip(
+          label: const Text('All'),
+          selected: selectedCategory == 'All',
+          onSelected: (_) {
+            context.read<ProductCatalogBloc>().add(
+              const SelectProductCategory('All'),
+            );
+          },
+        ),
+        for (final category in categories)
+          ChoiceChip(
+            label: Text(category),
+            selected: selectedCategory == category,
+            onSelected: (_) {
+              context.read<ProductCatalogBloc>().add(
+                SelectProductCategory(category),
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
+List<String> _buildCategories(List<Product> products) {
+  final categories = products
+      .map((product) => product.category)
+      .where((category) => category.trim().isNotEmpty)
+      .toSet()
+      .toList(growable: false);
+  categories.sort(
+    (left, right) => left.toLowerCase().compareTo(right.toLowerCase()),
+  );
+  return categories;
 }
 
 class _CartPanel extends StatelessWidget {
@@ -301,7 +417,7 @@ class _CartItemsList extends StatelessWidget {
         return ListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(item.product.name),
-          subtitle: Text('Qty: ${item.quantity}'),
+          subtitle: Text('Qty: ${item.quantity} • ${item.product.category}'),
           trailing: Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: 6,
