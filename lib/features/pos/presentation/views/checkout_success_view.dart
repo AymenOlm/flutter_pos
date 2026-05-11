@@ -36,6 +36,12 @@ class CheckoutSuccessView extends StatelessWidget {
               label: const Text('Print Receipt'),
             ),
             const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _exportReceiptPdf(context),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Export PDF'),
+            ),
+            const SizedBox(height: 8),
             OutlinedButton(
               onPressed: () {
                 Navigator.of(context).pop();
@@ -59,6 +65,20 @@ class CheckoutSuccessView extends StatelessWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Unable to print receipt.')));
+    }
+  }
+
+  Future<void> _exportReceiptPdf(BuildContext context) async {
+    try {
+      await sl<ReceiptService>().exportReceiptPdf(record);
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to export receipt PDF.')),
+      );
     }
   }
 

@@ -38,6 +38,14 @@ class ReceiptService {
     );
   }
 
+  Future<void> exportReceiptPdf(
+    TransactionRecord record, {
+    ReceiptPaperSize paperSize = ReceiptPaperSize.mm80,
+  }) async {
+    final data = await buildReceipt(record, paperSize: paperSize);
+    await Printing.sharePdf(bytes: data, filename: 'receipt_${record.id}.pdf');
+  }
+
   PdfPageFormat _pageFormat(ReceiptPaperSize paperSize) {
     const mmToPoint = 72 / 25.4;
     final width = (paperSize == ReceiptPaperSize.mm58 ? 58 : 80) * mmToPoint;

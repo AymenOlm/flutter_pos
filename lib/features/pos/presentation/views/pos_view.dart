@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
@@ -141,8 +142,9 @@ class _ProductPanel extends StatelessWidget {
                         child: Center(
                           child: Text(
                             state.products.isEmpty
-                                ? 'No products available.'
-                                : 'No products match the selected filters.',
+                                ? 'No products available. Add items from the catalog or create one in Admin.'
+                                : 'No products match those filters. Try clearing filters or searching different terms.',
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ),
@@ -416,29 +418,116 @@ class _CartItemsList extends StatelessWidget {
 
         return ListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text(item.product.name),
-          subtitle: Text('Qty: ${item.quantity} • ${item.product.category}'),
-          trailing: Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 6,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('\$${item.lineTotal.toStringAsFixed(2)}'),
-              IconButton(
-                onPressed: () {
-                  context.read<CartBloc>().add(RemoveItem(item.product));
-                },
-                icon: const Icon(
-                  Icons.remove_circle_outline,
-                  semanticLabel: 'Remove item',
+              Text(item.product.name),
+              Text(
+                '\$${item.lineTotal.toStringAsFixed(2)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          subtitle: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${item.product.category} • \$${item.product.price.toStringAsFixed(2)} each',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              SizedBox(
+                width: 96,
+                child: _QuantityEntryField(
+                  product: item.product,
+                  quantity: item.quantity,
                 ),
-                tooltip: 'Remove ${item.product.name}',
-                padding: const EdgeInsets.all(12),
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _QuantityEntryField extends StatefulWidget {
+  const _QuantityEntryField({required this.product, required this.quantity});
+
+  final Product product;
+  final int quantity;
+
+  @override
+  State<_QuantityEntryField> createState() => _QuantityEntryFieldState();
+}
+
+class _QuantityEntryFieldState extends State<_QuantityEntryField> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.quantity.toString());
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(covariant _QuantityEntryField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.quantity != widget.quantity && !_focusNode.hasFocus) {
+      _controller.text = widget.quantity.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _applyQuantity(BuildContext context) {
+    final parsedQuantity = int.tryParse(_controller.text.trim()) ?? 0;
+    final targetQuantity = parsedQuantity < 0 ? 0 : parsedQuantity;
+
+    for (var index = widget.quantity; index < targetQuantity; index++) {
+      context.read<CartBloc>().add(AddItem(widget.product));
+    }
+
+    for (var index = targetQuantity; index < widget.quantity; index++) {
+      context.read<CartBloc>().add(RemoveItem(widget.product));
+    }
+
+    if (targetQuantity == 0) {
+      _controller.text = '0';
+      return;
+    }
+
+    _controller.text = targetQuantity.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      focusNode: _focusNode,
+      keyboardType: TextInputType.number,
+      textAlign: TextAlign.center,
+      textInputAction: TextInputAction.done,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(
+        labelText: 'Qty',
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 10,
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      onSubmitted: (_) => _applyQuantity(context),
+      onEditingComplete: () => _applyQuantity(context),
     );
   }
 }

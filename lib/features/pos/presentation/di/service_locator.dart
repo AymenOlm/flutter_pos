@@ -9,6 +9,7 @@ import 'package:flutter_pos/features/auth/domain/usecases/get_current_user.dart'
 import 'package:flutter_pos/features/auth/domain/usecases/login.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/logout.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:flutter_pos/features/pos/data/datasources/cart_local_data_source.dart';
 import 'package:flutter_pos/features/pos/data/datasources/pos_local_database.dart';
 import 'package:flutter_pos/features/pos/data/datasources/product_local_data_source.dart';
 import 'package:flutter_pos/features/pos/data/datasources/product_remote_data_source.dart';
@@ -87,6 +88,12 @@ Future<void> initPosDependencies() async {
     );
   }
 
+  if (!sl.isRegistered<CartLocalDataSource>()) {
+    sl.registerLazySingleton<CartLocalDataSource>(
+      SharedPrefsCartLocalDataSource.new,
+    );
+  }
+
   if (!sl.isRegistered<ProductRepository>()) {
     sl.registerLazySingleton<ProductRepository>(
       () => ProductRepositoryImpl(
@@ -120,6 +127,7 @@ Future<void> initPosDependencies() async {
         calculateTotal: sl<CalculateTotal>(),
         saveTransaction: sl<SaveTransaction>(),
         logger: sl<AppLogger>(),
+        cartLocalDataSource: sl<CartLocalDataSource>(),
       ),
     );
   }

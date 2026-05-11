@@ -53,3 +53,7 @@ class CheckoutSubmitted extends CartEvent {
 class CheckoutStatusReset extends CartEvent {
   const CheckoutStatusReset();
 }
+
+class RestoreCartRequested extends CartEvent {
+  const RestoreCartRequested();
+}
