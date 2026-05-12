@@ -58,7 +58,7 @@ class DriftSalesLocalDataSource implements SalesLocalDataSource {
         record.discountType.name,
         record.discountValue,
         record.discountAmount,
-        record.tax,
+        0.0,
         record.total,
         itemsJson,
       ],
@@ -77,7 +77,6 @@ class DriftSalesLocalDataSource implements SalesLocalDataSource {
         discount_type,
         discount_value,
         discount_amount,
-        tax,
         total,
         items_json
       FROM sales
@@ -115,7 +114,6 @@ class DriftSalesLocalDataSource implements SalesLocalDataSource {
       discountType: _discountTypeFromName(row.read<String>('discount_type')),
       discountValue: row.read<double>('discount_value'),
       discountAmount: row.read<double>('discount_amount'),
-      tax: row.read<double>('tax'),
       total: row.read<double>('total'),
     );
   }

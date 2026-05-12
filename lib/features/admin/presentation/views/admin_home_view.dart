@@ -216,15 +216,6 @@ class _AdminOverviewTabState extends State<_AdminOverviewTab> {
                           background: colorScheme.secondaryContainer,
                         ),
                         _DashboardMetricCard(
-                          title: 'Tax collected',
-                          value: _formatCurrency(data.taxCollected),
-                          detail:
-                              'Discounts ${_formatCurrency(data.discountGiven)}',
-                          icon: Icons.account_balance_outlined,
-                          accent: colorScheme.error,
-                          background: colorScheme.errorContainer,
-                        ),
-                        _DashboardMetricCard(
                           title: 'Items sold',
                           value: '${data.itemsSold}',
                           detail: 'Top product ${data.topProductName}',
@@ -1046,9 +1037,6 @@ class _AdminOverviewData {
 
   double get subtotal =>
       transactions.fold<double>(0, (sum, item) => sum + item.subtotal);
-
-  double get taxCollected =>
-      transactions.fold<double>(0, (sum, item) => sum + item.tax);
 
   double get discountGiven =>
       transactions.fold<double>(0, (sum, item) => sum + item.discountAmount);

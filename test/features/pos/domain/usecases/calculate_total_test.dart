@@ -22,12 +22,10 @@ void main() {
 
       expect(result.subtotal, 10);
       expect(result.discountAmount, 0);
-      expect(result.taxableSubtotal, 10);
-      expect(result.tax, closeTo(1, 0.0001));
-      expect(result.total, closeTo(11, 0.0001));
+      expect(result.total, closeTo(10, 0.0001));
     });
 
-    test('applies a fixed discount before tax', () {
+    test('applies a fixed discount before the final total', () {
       const cart = CartEntity(
         items: [
           CartItemEntity(
@@ -44,12 +42,10 @@ void main() {
 
       expect(result.subtotal, 20);
       expect(result.discountAmount, 5);
-      expect(result.taxableSubtotal, 15);
-      expect(result.tax, closeTo(1.5, 0.0001));
-      expect(result.total, closeTo(16.5, 0.0001));
+      expect(result.total, closeTo(15, 0.0001));
     });
 
-    test('applies a percentage discount before tax', () {
+    test('applies a percentage discount before the final total', () {
       const cart = CartEntity(
         items: [
           CartItemEntity(
@@ -66,9 +62,7 @@ void main() {
 
       expect(result.subtotal, 20);
       expect(result.discountAmount, 2);
-      expect(result.taxableSubtotal, 18);
-      expect(result.tax, closeTo(1.8, 0.0001));
-      expect(result.total, closeTo(19.8, 0.0001));
+      expect(result.total, closeTo(18, 0.0001));
     });
   });
 }

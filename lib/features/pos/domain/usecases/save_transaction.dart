@@ -37,7 +37,6 @@ class SaveTransaction {
       discountType: params.discount.type,
       discountValue: params.discount.value,
       discountAmount: params.totals.discountAmount,
-      tax: params.totals.tax,
       total: params.totals.total,
     );
 

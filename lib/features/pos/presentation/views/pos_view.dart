@@ -551,7 +551,6 @@ class _TotalsSection extends StatelessWidget {
             state.totals.discountAmount,
             isNegative: true,
           ),
-        _amountRow('Tax (10%)', state.totals.tax),
         const Divider(),
         _amountRow('Total', state.totals.total, isEmphasis: true),
         const SizedBox(height: 12),

@@ -41,7 +41,6 @@ void main() {
         discountType: DiscountType.fixed,
         discountValue: 0,
         discountAmount: 0,
-        tax: 0.35,
         total: 3.85,
       );
 
@@ -62,7 +61,6 @@ void main() {
           discountType: DiscountType.fixed,
           discountValue: 0,
           discountAmount: 0,
-          tax: 0,
           total: 0,
         ),
       ];

@@ -57,8 +57,7 @@ void main() {
       expect(result.discountType, DiscountType.fixed);
       expect(result.discountValue, 2.00);
       expect(result.discountAmount, 2.00);
-      expect(result.tax, closeTo(0.775, 0.0001));
-      expect(result.total, closeTo(8.525, 0.0001));
+      expect(result.total, closeTo(7.75, 0.0001));
       expect(result.id, isNotEmpty);
     });
   });

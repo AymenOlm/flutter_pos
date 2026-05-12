@@ -52,31 +52,19 @@ class CartTotals extends Equatable {
   const CartTotals({
     required this.subtotal,
     required this.discountAmount,
-    required this.taxableSubtotal,
-    required this.tax,
     required this.total,
   });
 
   final double subtotal;
   final double discountAmount;
-  final double taxableSubtotal;
-  final double tax;
   final double total;
 
   @override
-  List<Object?> get props => [
-    subtotal,
-    discountAmount,
-    taxableSubtotal,
-    tax,
-    total,
-  ];
+  List<Object?> get props => [subtotal, discountAmount, total];
 }
 
 class CalculateTotal {
-  const CalculateTotal({this.taxRate = 0.10});
-
-  final double taxRate;
+  const CalculateTotal();
 
   CartTotals call(
     CartEntity cart, {
@@ -84,15 +72,12 @@ class CalculateTotal {
   }) {
     final subtotal = cart.subtotal;
     final discountAmount = discount.amountFor(subtotal);
-    final taxableSubtotal = math.max(0.0, subtotal - discountAmount).toDouble();
-    final tax = taxableSubtotal * taxRate;
+    final total = math.max(0.0, subtotal - discountAmount).toDouble();
 
     return CartTotals(
       subtotal: subtotal,
       discountAmount: discountAmount,
-      taxableSubtotal: taxableSubtotal,
-      tax: tax,
-      total: taxableSubtotal + tax,
+      total: total,
     );
   }
 }

@@ -13,7 +13,6 @@ class TransactionRecord extends Equatable {
     required this.discountType,
     required this.discountValue,
     required this.discountAmount,
-    required this.tax,
     required this.total,
   });
 
@@ -25,7 +24,6 @@ class TransactionRecord extends Equatable {
   final DiscountType discountType;
   final double discountValue;
   final double discountAmount;
-  final double tax;
   final double total;
 
   @override
@@ -38,7 +36,6 @@ class TransactionRecord extends Equatable {
     discountType,
     discountValue,
     discountAmount,
-    tax,
     total,
   ];
 }

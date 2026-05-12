@@ -19,13 +19,7 @@ class CartState extends Equatable {
   factory CartState.initial() {
     const cart = CartEntity();
     const discount = CartDiscount.none();
-    const totals = CartTotals(
-      subtotal: 0,
-      discountAmount: 0,
-      taxableSubtotal: 0,
-      tax: 0,
-      total: 0,
-    );
+    const totals = CartTotals(subtotal: 0, discountAmount: 0, total: 0);
     return const CartState(
       cart: cart,
       totals: totals,

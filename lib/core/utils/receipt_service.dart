@@ -95,7 +95,6 @@ class ReceiptService {
             -record.discountAmount,
             textStyle,
           ),
-        _amountRow('Tax', record.tax, textStyle),
         _amountRow(
           'Total',
           record.total,
