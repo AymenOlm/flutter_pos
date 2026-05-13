@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_event.dart';
+import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
 import 'package:flutter_pos/features/pos/domain/repositories/product_repository.dart';
@@ -967,6 +968,553 @@ class _RecentTransactionTile extends StatelessWidget {
   }
 }
 
+enum _SalesDateFilter { all, today, last7Days, last30Days }
+
+extension on _SalesDateFilter {
+  String get label {
+    return switch (this) {
+      _SalesDateFilter.all => 'All',
+      _SalesDateFilter.today => 'Today',
+      _SalesDateFilter.last7Days => '7 days',
+      _SalesDateFilter.last30Days => '30 days',
+    };
+  }
+}
+
+class _SalesTab extends StatefulWidget {
+  const _SalesTab();
+
+  @override
+  State<_SalesTab> createState() => _SalesTabState();
+}
+
+class _SalesTabState extends State<_SalesTab> {
+  late Future<List<TransactionRecord>> _transactionsFuture;
+  final TextEditingController _searchController = TextEditingController();
+  _SalesDateFilter _selectedDateFilter = _SalesDateFilter.all;
+
+  @override
+  void initState() {
+    super.initState();
+    _transactionsFuture = sl<SalesRepository>().getTransactions();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refreshTransactions() async {
+    setState(() {
+      _transactionsFuture = sl<SalesRepository>().getTransactions();
+    });
+    await _transactionsFuture;
+  }
+
+  void _setDateFilter(_SalesDateFilter filter) {
+    setState(() => _selectedDateFilter = filter);
+  }
+
+  List<TransactionRecord> _applyFilters(List<TransactionRecord> sales) {
+    final query = _searchController.text.trim().toLowerCase();
+
+    return sales
+        .where((sale) {
+          if (!_matchesDateFilter(sale)) {
+            return false;
+          }
+
+          if (query.isEmpty) {
+            return true;
+          }
+
+          final searchableValues = <String>[
+            sale.id,
+            sale.paymentMethod,
+            sale.total.toStringAsFixed(2),
+            sale.createdAt.toIso8601String(),
+            ...sale.cart.items.map((item) => item.product.name),
+          ];
+
+          return searchableValues.any(
+            (value) => value.toLowerCase().contains(query),
+          );
+        })
+        .toList(growable: false);
+  }
+
+  bool _matchesDateFilter(TransactionRecord sale) {
+    final saleDay = _dateOnly(sale.createdAt);
+    final today = _dateOnly(DateTime.now());
+
+    return switch (_selectedDateFilter) {
+      _SalesDateFilter.all => true,
+      _SalesDateFilter.today => saleDay == today,
+      _SalesDateFilter.last7Days => sale.createdAt.isAfter(
+        DateTime.now().subtract(const Duration(days: 7)),
+      ),
+      _SalesDateFilter.last30Days => sale.createdAt.isAfter(
+        DateTime.now().subtract(const Duration(days: 30)),
+      ),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<TransactionRecord>>(
+      future: _transactionsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Unable to load sales history',
+                    style: Theme.of(context).textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${snapshot.error}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _refreshTransactions,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final filteredSales = _applyFilters(snapshot.data!);
+
+        return RefreshIndicator(
+          onRefresh: _refreshTransactions,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(
+                'Order history',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Browse completed sales with date filters, search, and transaction details.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
+                  labelText: 'Search sales',
+                  hintText: 'Search by transaction ID, payment method, or item',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final filter in _SalesDateFilter.values)
+                    FilterChip(
+                      label: Text(filter.label),
+                      selected: _selectedDateFilter == filter,
+                      onSelected: (_) => _setDateFilter(filter),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (filteredSales.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child: Center(
+                    child: Text(
+                      snapshot.data!.isEmpty
+                          ? 'No sales yet.'
+                          : 'No sales match those filters.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              else
+                ...filteredSales.map(
+                  (sale) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _SalesHistoryTile(
+                      transaction: sale,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                TransactionDetailView(transaction: sale),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SalesHistoryTile extends StatelessWidget {
+  const _SalesHistoryTile({required this.transaction, required this.onTap});
+
+  final TransactionRecord transaction;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.34),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  transaction.paymentMethod.toLowerCase().contains('cash')
+                      ? Icons.payments_outlined
+                      : Icons.credit_card_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Transaction #${transaction.id}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${transaction.paymentMethod.toUpperCase()} • ${_formatShortDateTime(context, transaction.createdAt)} • ${transaction.cart.items.length} items',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _formatCurrency(transaction.total),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  TextButton(
+                    onPressed: onTap,
+                    child: const Text('View details'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class TransactionDetailView extends StatelessWidget {
+  const TransactionDetailView({super.key, required this.transaction});
+
+  final TransactionRecord transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Transaction Details')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Transaction #${transaction.id}',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _formatShortDateTime(context, transaction.createdAt),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _DetailChip(
+                        label: 'Payment',
+                        value: transaction.paymentMethod,
+                      ),
+                      _DetailChip(
+                        label: 'Items',
+                        value: '${transaction.cart.items.length}',
+                      ),
+                      _DetailChip(
+                        label: 'Total',
+                        value: _formatCurrency(transaction.total),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Items',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  for (final item in transaction.cart.items) ...[
+                    _TransactionItemRow(item: item),
+                    const SizedBox(height: 12),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Totals',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _AmountRow(label: 'Subtotal', value: transaction.subtotal),
+                  if (transaction.discountAmount > 0) ...[
+                    const SizedBox(height: 4),
+                    _AmountRow(
+                      label:
+                          'Discount (${transaction.discountType.displayName})',
+                      value: transaction.discountAmount,
+                      isNegative: true,
+                    ),
+                  ],
+                  const Divider(height: 24),
+                  _AmountRow(
+                    label: 'Total',
+                    value: transaction.total,
+                    isEmphasis: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailChip extends StatelessWidget {
+  const _DetailChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.42,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransactionItemRow extends StatelessWidget {
+  const _TransactionItemRow({required this.item});
+
+  final CartItemEntity item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.product.name,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${item.quantity} × ${_formatCurrency(item.product.price)}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          _formatCurrency(item.lineTotal),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AmountRow extends StatelessWidget {
+  const _AmountRow({
+    required this.label,
+    required this.value,
+    this.isNegative = false,
+    this.isEmphasis = false,
+  });
+
+  final String label;
+  final double value;
+  final bool isNegative;
+  final bool isEmphasis;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textStyle = isEmphasis
+        ? theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)
+        : theme.textTheme.bodyMedium;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: textStyle),
+        Text(
+          '${isNegative ? '-' : ''}${_formatCurrency(value)}',
+          style: textStyle,
+        ),
+      ],
+    );
+  }
+}
+
 class _HeroChip extends StatelessWidget {
   const _HeroChip({required this.label, required this.value});
 
@@ -1801,39 +2349,5 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
         setState(() => _loading = false);
       }
     }
-  }
-}
-
-class _SalesTab extends StatelessWidget {
-  const _SalesTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<TransactionRecord>>(
-      future: sl<SalesRepository>().getTransactions(),
-      builder: (context, snapshot) {
-        final sales = snapshot.data ?? const <TransactionRecord>[];
-
-        if (sales.isEmpty) {
-          return const Center(child: Text('No sales yet.'));
-        }
-
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: sales.length,
-          separatorBuilder: (context, index) => const Divider(height: 1),
-          itemBuilder: (context, index) {
-            final sale = sales[index];
-            return ListTile(
-              title: Text('Transaction #${sale.id}'),
-              subtitle: Text(
-                '${sale.paymentMethod} • ${sale.createdAt.toLocal()}\nItems: ${sale.cart.items.length} • Discount: ${sale.discountAmount > 0 ? sale.discountType.displayName : 'none'}',
-              ),
-              trailing: Text('\$${sale.total.toStringAsFixed(2)}'),
-            );
-          },
-        );
-      },
-    );
   }
 }

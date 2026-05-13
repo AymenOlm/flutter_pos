@@ -575,26 +575,6 @@ class _TotalsSection extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Semantics(
-                button: true,
-                label:
-                    'Pay by card, total ${state.totals.total.toStringAsFixed(2)} dollars',
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  onPressed:
-                      state.cart.items.isEmpty ||
-                          state.checkoutStatus == CheckoutStatus.submitting
-                      ? null
-                      : () => _checkout(context, 'Card'),
-                  child: const Text('Pay Card'),
-                ),
-              ),
-            ),
           ],
         ),
         if (state.checkoutStatus == CheckoutStatus.submitting) ...[
