@@ -17,7 +17,7 @@ import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart
 import 'package:flutter_pos/features/pos/domain/repositories/product_repository.dart';
 import 'package:flutter_pos/features/pos/domain/repositories/sales_repository.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
-import 'package:flutter_pos/features/pos/presentation/di/service_locator.dart';
+import 'package:flutter_pos/core/di/service_locator.dart';
 import 'package:flutter_pos/features/admin/presentation/views/admin_home_view.dart';
 
 class _FakeAuthRepository implements AuthRepository {

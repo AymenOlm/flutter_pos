@@ -6,7 +6,7 @@ import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
-import 'package:flutter_pos/features/pos/presentation/di/service_locator.dart';
+import 'package:flutter_pos/core/di/service_locator.dart';
 import 'package:flutter_pos/features/pos/presentation/views/checkout_success_view.dart';
 
 class _FakeReceiptService extends ReceiptService {

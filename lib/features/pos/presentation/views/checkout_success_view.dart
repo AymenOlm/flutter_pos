@@ -4,7 +4,7 @@ import 'package:flutter_pos/core/utils/receipt_service.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
-import 'package:flutter_pos/features/pos/presentation/di/service_locator.dart';
+import 'package:flutter_pos/core/di/service_locator.dart';
 
 class CheckoutSuccessView extends StatelessWidget {
   const CheckoutSuccessView({super.key, required this.record});

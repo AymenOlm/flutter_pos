@@ -24,7 +24,7 @@ import 'package:flutter_pos/features/pos/domain/usecases/save_transaction.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/cart/cart_bloc.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_bloc.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_event.dart';
-import 'package:flutter_pos/features/pos/presentation/di/service_locator.dart';
+import 'package:flutter_pos/core/di/service_locator.dart';
 import 'package:flutter_pos/features/pos/presentation/views/pos_view.dart';
 import 'package:flutter_pos/main.dart';
 
@@ -155,7 +155,7 @@ void main() {
     WidgetTester tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
-    await initPosDependencies();
+    await initDependencies();
     await sl<AuthRepository>().logout();
     await tester.pumpWidget(const POSApp());
     await tester.pump(const Duration(milliseconds: 600));

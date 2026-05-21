@@ -1,5 +1,5 @@
-import 'package:get_it/get_it.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:get_it/get_it.dart';
 
 import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/core/utils/receipt_service.dart';
@@ -29,7 +29,14 @@ import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/produ
 
 final sl = GetIt.instance;
 
-Future<void> initPosDependencies() async {
+Future<void> initDependencies() async {
+  initCoreDependencies();
+  initAuthDependencies();
+  initPosDependencies();
+  initAdminDependencies();
+}
+
+void initCoreDependencies() {
   if (!sl.isRegistered<AppLogSink>()) {
     sl.registerLazySingleton<AppLogSink>(ConsoleAppLogSink.new);
   }
@@ -50,6 +57,16 @@ Future<void> initPosDependencies() async {
     sl.registerLazySingleton(FlutterSecureStorage.new);
   }
 
+  if (!sl.isRegistered<PosLocalDatabase>()) {
+    sl.registerLazySingleton(PosLocalDatabase.new);
+  }
+
+  if (!sl.isRegistered<ReceiptService>()) {
+    sl.registerLazySingleton(ReceiptService.new);
+  }
+}
+
+void initAuthDependencies() {
   if (!sl.isRegistered<AuthSessionLocalDataSource>()) {
     sl.registerLazySingleton<AuthSessionLocalDataSource>(
       () => SecureStorageAuthSessionLocalDataSource(sl<FlutterSecureStorage>()),
@@ -68,16 +85,6 @@ Future<void> initPosDependencies() async {
 
   if (!sl.isRegistered<ValidateCredentials>()) {
     sl.registerLazySingleton(ValidateCredentials.new);
-  }
-
-  if (!sl.isRegistered<PosLocalDatabase>()) {
-    sl.registerLazySingleton(PosLocalDatabase.new);
-  }
-
-  if (!sl.isRegistered<ProductRemoteDataSource>()) {
-    sl.registerLazySingleton<ProductRemoteDataSource>(
-      MockProductRemoteDataSource.new,
-    );
   }
 
   if (!sl.isRegistered<AuthRepository>()) {
@@ -102,6 +109,24 @@ Future<void> initPosDependencies() async {
 
   if (!sl.isRegistered<Logout>()) {
     sl.registerLazySingleton(() => Logout(sl<AuthRepository>()));
+  }
+
+  if (!sl.isRegistered<AuthBloc>()) {
+    sl.registerFactory(
+      () => AuthBloc(
+        getCurrentUser: sl<GetCurrentUser>(),
+        login: sl<Login>(),
+        logout: sl<Logout>(),
+      ),
+    );
+  }
+}
+
+void initPosDependencies() {
+  if (!sl.isRegistered<ProductRemoteDataSource>()) {
+    sl.registerLazySingleton<ProductRemoteDataSource>(
+      MockProductRemoteDataSource.new,
+    );
   }
 
   if (!sl.isRegistered<ProductLocalDataSource>()) {
@@ -145,10 +170,6 @@ Future<void> initPosDependencies() async {
     sl.registerLazySingleton(() => SaveTransaction(sl<SalesRepository>()));
   }
 
-  if (!sl.isRegistered<ReceiptService>()) {
-    sl.registerLazySingleton(ReceiptService.new);
-  }
-
   if (!sl.isRegistered<CartBloc>()) {
     sl.registerFactory(
       () => CartBloc(
@@ -168,14 +189,8 @@ Future<void> initPosDependencies() async {
       ),
     );
   }
+}
 
-  if (!sl.isRegistered<AuthBloc>()) {
-    sl.registerFactory(
-      () => AuthBloc(
-        getCurrentUser: sl<GetCurrentUser>(),
-        login: sl<Login>(),
-        logout: sl<Logout>(),
-      ),
-    );
-  }
+void initAdminDependencies() {
+  // Reserved for admin-specific registrations.
 }

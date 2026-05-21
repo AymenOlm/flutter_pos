@@ -9,15 +9,15 @@ import 'package:flutter_pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:flutter_pos/features/auth/presentation/views/login_view.dart';
+import 'package:flutter_pos/core/di/service_locator.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/cart/cart_bloc.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_bloc.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_event.dart';
-import 'package:flutter_pos/features/pos/presentation/di/service_locator.dart';
 import 'package:flutter_pos/features/pos/presentation/views/pos_view.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initPosDependencies();
+  await initDependencies();
   Bloc.observer = AppBlocObserver(sl<AppLogger>());
   sl<AppLogger>().info(
     feature: 'app',
