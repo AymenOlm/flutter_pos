@@ -18,8 +18,10 @@ import 'package:flutter_pos/features/pos/data/datasources/pos_local_database.dar
 import 'package:flutter_pos/features/pos/data/datasources/product_local_data_source.dart';
 import 'package:flutter_pos/features/pos/data/datasources/product_remote_data_source.dart';
 import 'package:flutter_pos/features/pos/data/datasources/sales_local_data_source.dart';
+import 'package:flutter_pos/features/pos/data/cart_repository_impl.dart';
 import 'package:flutter_pos/features/pos/data/repositories/product_repository_impl.dart';
 import 'package:flutter_pos/features/pos/data/repositories/sales_repository_impl.dart';
+import 'package:flutter_pos/features/pos/domain/repositories/cart_repository.dart';
 import 'package:flutter_pos/features/pos/domain/repositories/product_repository.dart';
 import 'package:flutter_pos/features/pos/domain/repositories/sales_repository.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
@@ -143,7 +145,13 @@ void initPosDependencies() {
 
   if (!sl.isRegistered<CartLocalDataSource>()) {
     sl.registerLazySingleton<CartLocalDataSource>(
-      SharedPrefsCartLocalDataSource.new,
+      () => DriftCartLocalDataSource(sl<PosLocalDatabase>()),
+    );
+  }
+
+  if (!sl.isRegistered<CartRepository>()) {
+    sl.registerLazySingleton<CartRepository>(
+      () => CartRepositoryImpl(sl<CartLocalDataSource>()),
     );
   }
 
@@ -176,7 +184,7 @@ void initPosDependencies() {
         calculateTotal: sl<CalculateTotal>(),
         saveTransaction: sl<SaveTransaction>(),
         logger: sl<AppLogger>(),
-        cartLocalDataSource: sl<CartLocalDataSource>(),
+        cartRepository: sl<CartRepository>(),
       ),
     );
   }

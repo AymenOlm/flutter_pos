@@ -1,10 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_pos/core/logging/app_logger.dart';
-import 'package:flutter_pos/features/pos/data/datasources/cart_local_data_source.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
+import 'package:flutter_pos/features/pos/domain/entities/cart_persistence_state.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
+import 'package:flutter_pos/features/pos/domain/repositories/cart_repository.dart';
 import 'package:flutter_pos/features/pos/domain/repositories/sales_repository.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/save_transaction.dart';
@@ -25,8 +26,8 @@ class _FakeSalesRepository implements SalesRepository {
       <TransactionRecord>[];
 }
 
-class _FakeCartLocalDataSource implements CartLocalDataSource {
-  PersistedCartState? loadedState;
+class _FakeCartRepository implements CartRepository {
+  CartPersistenceState? loadedState;
   CartEntity? savedCart;
   CartDiscount? savedDiscount;
   int clearCalls = 0;
@@ -37,7 +38,7 @@ class _FakeCartLocalDataSource implements CartLocalDataSource {
   }
 
   @override
-  Future<PersistedCartState?> loadCartState() async {
+  Future<CartPersistenceState?> loadCartState() async {
     return loadedState;
   }
 
@@ -54,8 +55,8 @@ class _FakeCartLocalDataSource implements CartLocalDataSource {
 void main() {
   group('CartBloc persistence', () {
     test('restores cart and discount on init', () async {
-      final localDataSource = _FakeCartLocalDataSource()
-        ..loadedState = PersistedCartState(
+      final cartRepository = _FakeCartRepository()
+        ..loadedState = CartPersistenceState(
           cart: CartEntity(
             items: const [
               CartItemEntity(
@@ -76,7 +77,7 @@ void main() {
         calculateTotal: const CalculateTotal(),
         saveTransaction: _FakeSaveTransaction(),
         logger: AppLogger(sinks: const []),
-        cartLocalDataSource: localDataSource,
+        cartRepository: cartRepository,
       );
 
       await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -88,12 +89,12 @@ void main() {
     });
 
     test('persists cart when item is added', () async {
-      final localDataSource = _FakeCartLocalDataSource();
+      final cartRepository = _FakeCartRepository();
       final bloc = CartBloc(
         calculateTotal: const CalculateTotal(),
         saveTransaction: _FakeSaveTransaction(),
         logger: AppLogger(sinks: const []),
-        cartLocalDataSource: localDataSource,
+        cartRepository: cartRepository,
       );
 
       bloc.add(
@@ -109,36 +110,36 @@ void main() {
 
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      expect(localDataSource.savedCart?.items.length, 1);
-      expect(localDataSource.savedDiscount, const CartDiscount.none());
+      expect(cartRepository.savedCart?.items.length, 1);
+      expect(cartRepository.savedDiscount, const CartDiscount.none());
       await bloc.close();
     });
 
     test('clears persisted cart on clear action', () async {
-      final localDataSource = _FakeCartLocalDataSource();
+      final cartRepository = _FakeCartRepository();
       final bloc = CartBloc(
         calculateTotal: const CalculateTotal(),
         saveTransaction: _FakeSaveTransaction(),
         logger: AppLogger(sinks: const []),
-        cartLocalDataSource: localDataSource,
+        cartRepository: cartRepository,
       );
 
       bloc.add(const ClearCart());
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      expect(localDataSource.clearCalls, 1);
+      expect(cartRepository.clearCalls, 1);
       await bloc.close();
     });
 
     test(
       'returns clear failure message for unsupported payment method',
       () async {
-        final localDataSource = _FakeCartLocalDataSource();
+        final cartRepository = _FakeCartRepository();
         final bloc = CartBloc(
           calculateTotal: const CalculateTotal(),
           saveTransaction: _FakeSaveTransaction(),
           logger: AppLogger(sinks: const []),
-          cartLocalDataSource: localDataSource,
+          cartRepository: cartRepository,
         );
 
         bloc.add(

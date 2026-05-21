@@ -2,8 +2,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/core/logging/correlation_id.dart';
-import 'package:flutter_pos/features/pos/data/datasources/cart_local_data_source.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
+import 'package:flutter_pos/features/pos/domain/repositories/cart_repository.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/save_transaction.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/cart/cart_event.dart';
@@ -14,11 +14,11 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     required CalculateTotal calculateTotal,
     required SaveTransaction saveTransaction,
     required AppLogger logger,
-    required CartLocalDataSource cartLocalDataSource,
+    required CartRepository cartRepository,
   }) : _calculateTotal = calculateTotal,
        _saveTransaction = saveTransaction,
        _logger = logger,
-       _cartLocalDataSource = cartLocalDataSource,
+       _cartRepository = cartRepository,
        super(CartState.initial()) {
     on<RestoreCartRequested>(_onRestoreCartRequested);
     on<AddItem>(_onAddItem);
@@ -33,14 +33,14 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   final CalculateTotal _calculateTotal;
   final SaveTransaction _saveTransaction;
   final AppLogger _logger;
-  final CartLocalDataSource _cartLocalDataSource;
+  final CartRepository _cartRepository;
 
   Future<void> _onRestoreCartRequested(
     RestoreCartRequested event,
     Emitter<CartState> emit,
   ) async {
     try {
-      final persistedState = await _cartLocalDataSource.loadCartState();
+      final persistedState = await _cartRepository.loadCartState();
       if (persistedState == null) {
         return;
       }
@@ -242,7 +242,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
   Future<void> _persistCartState(CartEntity cart, CartDiscount discount) async {
     try {
-      await _cartLocalDataSource.saveCartState(cart: cart, discount: discount);
+      await _cartRepository.saveCartState(cart: cart, discount: discount);
     } catch (error, stackTrace) {
       _logger.error(
         feature: 'cart',
@@ -257,7 +257,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
   Future<void> _clearPersistedCartState() async {
     try {
-      await _cartLocalDataSource.clearCartState();
+      await _cartRepository.clearCartState();
     } catch (error, stackTrace) {
       _logger.error(
         feature: 'cart',

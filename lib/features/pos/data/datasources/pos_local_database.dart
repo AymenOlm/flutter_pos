@@ -68,6 +68,24 @@ class PosLocalDatabase {
     ''');
 
     await db.customStatement('''
+      CREATE TABLE IF NOT EXISTS cart_state (
+        id INTEGER PRIMARY KEY,
+        discount_type TEXT NOT NULL DEFAULT 'fixed',
+        discount_value REAL NOT NULL DEFAULT 0
+      )
+    ''');
+
+    await db.customStatement('''
+      CREATE TABLE IF NOT EXISTS cart_items (
+        product_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        price REAL NOT NULL,
+        category TEXT NOT NULL DEFAULT 'General',
+        quantity INTEGER NOT NULL
+      )
+    ''');
+
+    await db.customStatement('''
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         username TEXT NOT NULL UNIQUE,
@@ -161,7 +179,7 @@ class _PosGeneratedDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   Iterable<TableInfo> get allTables => const [];

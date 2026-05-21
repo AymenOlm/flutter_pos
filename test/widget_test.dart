@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/features/auth/domain/entities/app_user.dart';
@@ -13,10 +12,11 @@ import 'package:flutter_pos/features/auth/domain/usecases/get_current_user.dart'
 import 'package:flutter_pos/features/auth/domain/usecases/login.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/logout.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/validate_credentials.dart';
-import 'package:flutter_pos/features/pos/data/datasources/cart_local_data_source.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
+import 'package:flutter_pos/features/pos/domain/entities/cart_persistence_state.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
+import 'package:flutter_pos/features/pos/domain/repositories/cart_repository.dart';
 import 'package:flutter_pos/features/pos/domain/repositories/product_repository.dart';
 import 'package:flutter_pos/features/pos/domain/repositories/sales_repository.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
@@ -24,9 +24,7 @@ import 'package:flutter_pos/features/pos/domain/usecases/save_transaction.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/cart/cart_bloc.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_bloc.dart';
 import 'package:flutter_pos/features/pos/presentation/bloc/product_catalog/product_catalog_event.dart';
-import 'package:flutter_pos/core/di/service_locator.dart';
 import 'package:flutter_pos/features/pos/presentation/views/pos_view.dart';
-import 'package:flutter_pos/main.dart';
 
 class _FakeProductRepository implements ProductRepository {
   _FakeProductRepository(this.products);
@@ -79,8 +77,8 @@ class _FakeSalesRepository implements SalesRepository {
       List<TransactionRecord>.unmodifiable(savedTransactions);
 }
 
-class _FakeCartLocalDataSource implements CartLocalDataSource {
-  PersistedCartState? loadedState;
+class _FakeCartRepository implements CartRepository {
+  CartPersistenceState? loadedState;
   CartEntity? savedCart;
   CartDiscount? savedDiscount;
   int clearCalls = 0;
@@ -91,7 +89,7 @@ class _FakeCartLocalDataSource implements CartLocalDataSource {
   }
 
   @override
-  Future<PersistedCartState?> loadCartState() async => loadedState;
+  Future<CartPersistenceState?> loadCartState() async => loadedState;
 
   @override
   Future<void> saveCartState({
@@ -125,19 +123,19 @@ Widget _buildPosShell({
 }
 
 CartBloc _buildCartBloc({
-  PersistedCartState? loadedState,
+  CartPersistenceState? loadedState,
   _FakeSalesRepository? salesRepository,
-  _FakeCartLocalDataSource? cartLocalDataSource,
+  _FakeCartRepository? cartRepository,
 }) {
-  final source = cartLocalDataSource ?? _FakeCartLocalDataSource();
-  source.loadedState = loadedState;
-  final repository = salesRepository ?? _FakeSalesRepository();
+  final cartRepositoryInstance = cartRepository ?? _FakeCartRepository();
+  cartRepositoryInstance.loadedState = loadedState;
+  final salesRepositoryInstance = salesRepository ?? _FakeSalesRepository();
 
   return CartBloc(
     calculateTotal: const CalculateTotal(),
-    saveTransaction: SaveTransaction(repository),
+    saveTransaction: SaveTransaction(salesRepositoryInstance),
     logger: AppLogger(sinks: const []),
-    cartLocalDataSource: source,
+    cartRepository: cartRepositoryInstance,
   );
 }
 
@@ -154,11 +152,27 @@ void main() {
   testWidgets('Login screen renders when no session', (
     WidgetTester tester,
   ) async {
-    SharedPreferences.setMockInitialValues({});
-    await initDependencies();
-    await sl<AuthRepository>().logout();
-    await tester.pumpWidget(const POSApp());
-    await tester.pump(const Duration(milliseconds: 600));
+    final authRepository = _FakeAuthRepository();
+    final authBloc = AuthBloc(
+      getCurrentUser: GetCurrentUser(authRepository),
+      login: Login(authRepository, const ValidateCredentials()),
+      logout: Logout(authRepository),
+    );
+    addTearDown(() async {
+      await authBloc.close();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider<AuthBloc>.value(
+          value: authBloc,
+          child: const LoginView(),
+        ),
+      ),
+    );
+
+    authBloc.add(const AuthStarted());
+    await tester.pumpAndSettle();
 
     expect(find.text('POS Login'), findsOneWidget);
     expect(find.text('Login'), findsOneWidget);
@@ -244,7 +258,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final cartLocalDataSource = _FakeCartLocalDataSource();
+    final cartRepository = _FakeCartRepository();
     final coffee = const Product(
       id: 'p-1',
       name: 'Coffee',
@@ -252,11 +266,11 @@ void main() {
       category: 'Beverages',
     );
     final cartBloc = _buildCartBloc(
-      loadedState: PersistedCartState(
+      loadedState: CartPersistenceState(
         cart: CartEntity(items: [CartItemEntity(product: coffee, quantity: 1)]),
         discount: const CartDiscount.none(),
       ),
-      cartLocalDataSource: cartLocalDataSource,
+      cartRepository: cartRepository,
     );
     final productCatalogBloc = _buildCatalogBloc([coffee]);
     addTearDown(() async {
@@ -277,13 +291,11 @@ void main() {
     quantityField.onSubmitted?.call('3');
     await tester.pumpAndSettle();
 
-    expect(cartLocalDataSource.savedCart?.items.single.quantity, 3);
+    expect(cartRepository.savedCart?.items.single.quantity, 3);
     expect(find.text(r'$10.50'), findsWidgets);
   });
 
   testWidgets('shows a snackbar when login fails', (WidgetTester tester) async {
-    SharedPreferences.setMockInitialValues({});
-
     final authRepository = _FakeAuthRepository(
       loginError: Exception('login failed'),
     );
@@ -313,9 +325,13 @@ void main() {
     await tester.enterText(find.byType(TextField).at(1), 'wrong-password');
     await tester.tap(find.widgetWithText(FilledButton, 'Login'));
     await tester.pump();
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Invalid username or password.'), findsOneWidget);
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(
+      find.text('Authentication failed. Please try again.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows checkout success screen after completing payment', (
@@ -331,7 +347,7 @@ void main() {
       category: 'Beverages',
     );
     final cartBloc = _buildCartBloc(
-      loadedState: PersistedCartState(
+      loadedState: CartPersistenceState(
         cart: CartEntity(items: [CartItemEntity(product: coffee, quantity: 1)]),
         discount: const CartDiscount.none(),
       ),
@@ -373,7 +389,7 @@ void main() {
       category: 'Beverages',
     );
     final cartBloc = _buildCartBloc(
-      loadedState: PersistedCartState(
+      loadedState: CartPersistenceState(
         cart: CartEntity(items: [CartItemEntity(product: coffee, quantity: 1)]),
         discount: const CartDiscount.none(),
       ),

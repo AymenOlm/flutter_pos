@@ -44,7 +44,6 @@ dependencies:
   pdf: ^3.12.0
   printing: ^5.14.3
   sqlite3_flutter_libs: ^0.6.0+eol
-  shared_preferences: ^2.5.3
   cryptography: ^2.7.0
   flutter_secure_storage: ^9.2.4
 
