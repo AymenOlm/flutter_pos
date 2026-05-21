@@ -7,6 +7,7 @@ import 'package:flutter_pos/features/auth/domain/repositories/auth_repository.da
 import 'package:flutter_pos/features/auth/domain/usecases/get_current_user.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/login.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/logout.dart';
+import 'package:flutter_pos/features/auth/domain/usecases/validate_credentials.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter_pos/features/pos/data/repositories/sales_repository_impl.dart';
 import 'package:flutter_pos/features/pos/data/datasources/sales_local_data_source.dart';
@@ -157,7 +158,7 @@ void main() {
     await _registerAdminDependencies(transactions: transactions);
     authBloc = AuthBloc(
       getCurrentUser: GetCurrentUser(_FakeAuthRepository()),
-      login: Login(_FakeAuthRepository()),
+      login: Login(_FakeAuthRepository(), const ValidateCredentials()),
       logout: Logout(_FakeAuthRepository()),
     );
 
@@ -204,7 +205,7 @@ void main() {
     await _registerAdminDependencies(transactions: transactions);
     authBloc = AuthBloc(
       getCurrentUser: GetCurrentUser(_FakeAuthRepository()),
-      login: Login(_FakeAuthRepository()),
+      login: Login(_FakeAuthRepository(), const ValidateCredentials()),
       logout: Logout(_FakeAuthRepository()),
     );
 

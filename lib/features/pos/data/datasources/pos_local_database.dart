@@ -67,6 +67,19 @@ class PosLocalDatabase {
       )
     ''');
 
+    await db.customStatement('''
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL,
+        failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+        lockout_until_epoch_ms INTEGER,
+        created_at_epoch_ms INTEGER NOT NULL,
+        updated_at_epoch_ms INTEGER NOT NULL
+      )
+    ''');
+
     await _ensureColumn(
       db,
       tableName: 'sales',
@@ -90,6 +103,30 @@ class PosLocalDatabase {
       tableName: 'products',
       columnName: 'category',
       columnDefinition: "TEXT NOT NULL DEFAULT 'General'",
+    );
+    await _ensureColumn(
+      db,
+      tableName: 'users',
+      columnName: 'failed_login_attempts',
+      columnDefinition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _ensureColumn(
+      db,
+      tableName: 'users',
+      columnName: 'lockout_until_epoch_ms',
+      columnDefinition: 'INTEGER',
+    );
+    await _ensureColumn(
+      db,
+      tableName: 'users',
+      columnName: 'created_at_epoch_ms',
+      columnDefinition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _ensureColumn(
+      db,
+      tableName: 'users',
+      columnName: 'updated_at_epoch_ms',
+      columnDefinition: 'INTEGER NOT NULL DEFAULT 0',
     );
   }
 
@@ -124,7 +161,7 @@ class _PosGeneratedDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   Iterable<TableInfo> get allTables => const [];

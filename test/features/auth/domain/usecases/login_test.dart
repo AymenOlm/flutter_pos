@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_pos/features/auth/domain/entities/app_user.dart';
+import 'package:flutter_pos/features/auth/domain/errors/auth_failures.dart';
 import 'package:flutter_pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/login.dart';
+import 'package:flutter_pos/features/auth/domain/usecases/validate_credentials.dart';
 
 class _FakeAuthRepository implements AuthRepository {
   AppUser? currentUser;
@@ -51,7 +53,8 @@ void main() {
         );
         repository.loginResult = expectedUser;
 
-        final useCase = Login(repository);
+        const validator = ValidateCredentials();
+        final useCase = Login(repository, validator);
         final result = await useCase(username: 'admin', password: 'admin123');
 
         expect(result, expectedUser);
@@ -64,14 +67,28 @@ void main() {
     test('rethrows repository login failures', () async {
       final repository = _FakeAuthRepository();
       repository.loginError = Exception('Invalid credentials');
+      const validator = ValidateCredentials();
 
-      final useCase = Login(repository);
+      final useCase = Login(repository, validator);
 
       await expectLater(
         () => useCase(username: 'admin', password: 'wrong'),
         throwsA(isA<Exception>()),
       );
       expect(repository.loginCalls, 1);
+    });
+
+    test('fails fast when username is empty and skips repository', () async {
+      final repository = _FakeAuthRepository();
+      const validator = ValidateCredentials();
+      final useCase = Login(repository, validator);
+
+      await expectLater(
+        () => useCase(username: '   ', password: 'admin123'),
+        throwsA(isA<InvalidCredentialInputFailure>()),
+      );
+
+      expect(repository.loginCalls, 0);
     });
   });
 }

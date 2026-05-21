@@ -12,6 +12,7 @@ import 'package:flutter_pos/features/auth/presentation/views/login_view.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/get_current_user.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/login.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/logout.dart';
+import 'package:flutter_pos/features/auth/domain/usecases/validate_credentials.dart';
 import 'package:flutter_pos/features/pos/data/datasources/cart_local_data_source.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
@@ -288,7 +289,7 @@ void main() {
     );
     final authBloc = AuthBloc(
       getCurrentUser: GetCurrentUser(authRepository),
-      login: Login(authRepository),
+      login: Login(authRepository, const ValidateCredentials()),
       logout: Logout(authRepository),
     );
     addTearDown(() async {

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/get_current_user.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/login.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/logout.dart';
+import 'package:flutter_pos/features/auth/domain/errors/auth_failures.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_state.dart';
 
@@ -66,12 +67,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           clearError: true,
         ),
       );
+    } on AuthFailure catch (failure) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          user: null,
+          errorMessage: failure.message,
+        ),
+      );
+      emit(state.copyWith(status: AuthStatus.unauthenticated));
     } catch (_) {
       emit(
         state.copyWith(
           status: AuthStatus.failure,
           user: null,
-          errorMessage: 'Invalid username or password.',
+          errorMessage: 'Authentication failed. Please try again.',
         ),
       );
       emit(state.copyWith(status: AuthStatus.unauthenticated));

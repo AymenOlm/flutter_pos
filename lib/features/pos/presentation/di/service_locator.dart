@@ -1,13 +1,17 @@
 import 'package:get_it/get_it.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/core/utils/receipt_service.dart';
-import 'package:flutter_pos/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:flutter_pos/features/auth/data/datasources/auth_session_local_data_source.dart';
+import 'package:flutter_pos/features/auth/data/datasources/auth_user_local_data_source.dart';
 import 'package:flutter_pos/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:flutter_pos/features/auth/data/security/password_hasher.dart';
 import 'package:flutter_pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/get_current_user.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/login.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/logout.dart';
+import 'package:flutter_pos/features/auth/domain/usecases/validate_credentials.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter_pos/features/pos/data/datasources/cart_local_data_source.dart';
 import 'package:flutter_pos/features/pos/data/datasources/pos_local_database.dart';
@@ -42,28 +46,28 @@ Future<void> initPosDependencies() async {
     );
   }
 
-  if (!sl.isRegistered<AuthLocalDataSource>()) {
-    sl.registerLazySingleton<AuthLocalDataSource>(
-      SharedPrefsAuthLocalDataSource.new,
+  if (!sl.isRegistered<FlutterSecureStorage>()) {
+    sl.registerLazySingleton(FlutterSecureStorage.new);
+  }
+
+  if (!sl.isRegistered<AuthSessionLocalDataSource>()) {
+    sl.registerLazySingleton<AuthSessionLocalDataSource>(
+      () => SecureStorageAuthSessionLocalDataSource(sl<FlutterSecureStorage>()),
     );
   }
 
-  if (!sl.isRegistered<AuthRepository>()) {
-    sl.registerLazySingleton<AuthRepository>(
-      () => AuthRepositoryImpl(sl<AuthLocalDataSource>()),
+  if (!sl.isRegistered<AuthUserLocalDataSource>()) {
+    sl.registerLazySingleton<AuthUserLocalDataSource>(
+      () => DriftAuthUserLocalDataSource(sl<PosLocalDatabase>()),
     );
   }
 
-  if (!sl.isRegistered<GetCurrentUser>()) {
-    sl.registerLazySingleton(() => GetCurrentUser(sl<AuthRepository>()));
+  if (!sl.isRegistered<PasswordHasher>()) {
+    sl.registerLazySingleton<PasswordHasher>(Argon2PasswordHasher.new);
   }
 
-  if (!sl.isRegistered<Login>()) {
-    sl.registerLazySingleton(() => Login(sl<AuthRepository>()));
-  }
-
-  if (!sl.isRegistered<Logout>()) {
-    sl.registerLazySingleton(() => Logout(sl<AuthRepository>()));
+  if (!sl.isRegistered<ValidateCredentials>()) {
+    sl.registerLazySingleton(ValidateCredentials.new);
   }
 
   if (!sl.isRegistered<PosLocalDatabase>()) {
@@ -74,6 +78,30 @@ Future<void> initPosDependencies() async {
     sl.registerLazySingleton<ProductRemoteDataSource>(
       MockProductRemoteDataSource.new,
     );
+  }
+
+  if (!sl.isRegistered<AuthRepository>()) {
+    sl.registerLazySingleton<AuthRepository>(
+      () => AuthRepositoryImpl(
+        userLocalDataSource: sl<AuthUserLocalDataSource>(),
+        sessionLocalDataSource: sl<AuthSessionLocalDataSource>(),
+        passwordHasher: sl<PasswordHasher>(),
+      ),
+    );
+  }
+
+  if (!sl.isRegistered<GetCurrentUser>()) {
+    sl.registerLazySingleton(() => GetCurrentUser(sl<AuthRepository>()));
+  }
+
+  if (!sl.isRegistered<Login>()) {
+    sl.registerLazySingleton(
+      () => Login(sl<AuthRepository>(), sl<ValidateCredentials>()),
+    );
+  }
+
+  if (!sl.isRegistered<Logout>()) {
+    sl.registerLazySingleton(() => Logout(sl<AuthRepository>()));
   }
 
   if (!sl.isRegistered<ProductLocalDataSource>()) {

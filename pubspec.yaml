@@ -45,6 +45,8 @@ dependencies:
   printing: ^5.14.3
   sqlite3_flutter_libs: ^0.6.0+eol
   shared_preferences: ^2.5.3
+  cryptography: ^2.7.0
+  flutter_secure_storage: ^9.2.4
 
 dev_dependencies:
   flutter_test:
@@ -62,7 +64,6 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
