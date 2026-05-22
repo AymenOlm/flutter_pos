@@ -20,10 +20,11 @@ class AuthState extends Equatable {
     AppUser? user,
     String? errorMessage,
     bool clearError = false,
+    bool clearUser = false,
   }) {
     return AuthState(
       status: status ?? this.status,
-      user: user ?? this.user,
+      user: clearUser ? null : (user ?? this.user),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }

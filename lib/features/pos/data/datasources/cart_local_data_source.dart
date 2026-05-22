@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_persistence_state.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';

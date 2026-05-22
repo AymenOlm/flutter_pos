@@ -1,7 +1,14 @@
 name: CI
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
 
 jobs:
   analyze_test:
@@ -33,6 +40,8 @@ jobs:
         run: flutter analyze --no-fatal-infos
       - name: Run tests
         run: flutter test --coverage
+      - name: Check coverage threshold
+        run: python3 tool/check_coverage_threshold.py
 
   build_windows:
     name: Build Windows

@@ -33,7 +33,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(
         state.copyWith(
           status: AuthStatus.unauthenticated,
-          user: null,
+          clearUser: true,
           clearError: true,
         ),
       );
@@ -71,20 +71,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(
         state.copyWith(
           status: AuthStatus.failure,
-          user: null,
+          clearUser: true,
           errorMessage: failure.message,
         ),
       );
-      emit(state.copyWith(status: AuthStatus.unauthenticated));
+      emit(state.copyWith(status: AuthStatus.unauthenticated, clearUser: true));
     } catch (_) {
       emit(
         state.copyWith(
           status: AuthStatus.failure,
-          user: null,
+          clearUser: true,
           errorMessage: 'Authentication failed. Please try again.',
         ),
       );
-      emit(state.copyWith(status: AuthStatus.unauthenticated));
+      emit(state.copyWith(status: AuthStatus.unauthenticated, clearUser: true));
     }
   }
 
@@ -96,7 +96,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(
       state.copyWith(
         status: AuthStatus.unauthenticated,
-        user: null,
+        clearUser: true,
         clearError: true,
       ),
     );
