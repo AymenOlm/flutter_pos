@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dartz/dartz.dart';
+
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/features/auth/domain/entities/app_user.dart';
 import 'package:flutter_pos/features/auth/domain/repositories/auth_repository.dart';
@@ -32,49 +35,55 @@ class _FakeProductRepository implements ProductRepository {
   final List<Product> products;
 
   @override
-  Future<List<Product>> getProducts() async => products;
+  Future<Either<Failure, List<Product>>> getProducts() async => right(products);
 
   @override
-  Future<void> deleteProduct(String productId) async {}
+  Future<Either<Failure, Unit>> deleteProduct(String productId) async =>
+      right(unit);
 
   @override
-  Future<void> upsertProduct(Product product) async {}
+  Future<Either<Failure, Unit>> upsertProduct(Product product) async =>
+      right(unit);
 }
 
 class _FakeAuthRepository implements AuthRepository {
-  _FakeAuthRepository({this.loginError});
+  _FakeAuthRepository({this.loginFailure});
 
-  final Object? loginError;
-
-  @override
-  Future<AppUser?> getCurrentUser() async => null;
+  final Failure? loginFailure;
 
   @override
-  Future<AppUser> login({required String username, required String password}) {
-    if (loginError != null) {
-      return Future<AppUser>.error(loginError!);
+  Future<Either<Failure, AppUser?>> getCurrentUser() async => right(null);
+
+  @override
+  Future<Either<Failure, AppUser>> login({
+    required String username,
+    required String password,
+  }) async {
+    if (loginFailure != null) {
+      return left(loginFailure!);
     }
 
-    return Future<AppUser>.value(
-      AppUser(id: 'u-1', username: username, role: UserRole.seller),
-    );
+    return right(AppUser(id: 'u-1', username: username, role: UserRole.seller));
   }
 
   @override
-  Future<void> logout() async {}
+  Future<Either<Failure, Unit>> logout() async => right(unit);
 }
 
 class _FakeSalesRepository implements SalesRepository {
   final List<TransactionRecord> savedTransactions = <TransactionRecord>[];
 
   @override
-  Future<void> saveTransaction(TransactionRecord record) async {
+  Future<Either<Failure, Unit>> saveTransaction(
+    TransactionRecord record,
+  ) async {
     savedTransactions.add(record);
+    return right(unit);
   }
 
   @override
-  Future<List<TransactionRecord>> getTransactions() async =>
-      List<TransactionRecord>.unmodifiable(savedTransactions);
+  Future<Either<Failure, List<TransactionRecord>>> getTransactions() async =>
+      right(List<TransactionRecord>.unmodifiable(savedTransactions));
 }
 
 class _FakeCartRepository implements CartRepository {
@@ -84,20 +93,23 @@ class _FakeCartRepository implements CartRepository {
   int clearCalls = 0;
 
   @override
-  Future<void> clearCartState() async {
+  Future<Either<Failure, Unit>> clearCartState() async {
     clearCalls += 1;
+    return right(unit);
   }
 
   @override
-  Future<CartPersistenceState?> loadCartState() async => loadedState;
+  Future<Either<Failure, CartPersistenceState?>> loadCartState() async =>
+      right(loadedState);
 
   @override
-  Future<void> saveCartState({
+  Future<Either<Failure, Unit>> saveCartState({
     required CartEntity cart,
     required CartDiscount discount,
   }) async {
     savedCart = cart;
     savedDiscount = discount;
+    return right(unit);
   }
 }
 
@@ -297,7 +309,7 @@ void main() {
 
   testWidgets('shows a snackbar when login fails', (WidgetTester tester) async {
     final authRepository = _FakeAuthRepository(
-      loginError: Exception('login failed'),
+      loginFailure: const GenericValidationFailure('login failed'),
     );
     final authBloc = AuthBloc(
       getCurrentUser: GetCurrentUser(authRepository),

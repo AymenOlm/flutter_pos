@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_event.dart';
 import 'package:flutter_pos/features/auth/presentation/bloc/auth_state.dart';
@@ -33,12 +32,12 @@ class _LoginViewState extends State<LoginView> {
             padding: const EdgeInsets.all(20),
             child: BlocListener<AuthBloc, AuthState>(
               listenWhen: (previous, current) =>
-                  previous.errorMessage != current.errorMessage &&
-                  current.errorMessage != null,
+                  previous.failure != current.failure &&
+                  current.failure != null,
               listener: (context, state) {
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+                ).showSnackBar(SnackBar(content: Text(state.failure!.message)));
               },
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

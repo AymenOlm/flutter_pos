@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dartz/dartz.dart';
+
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
@@ -12,11 +15,15 @@ class _FakeSalesRepository implements SalesRepository {
   List<TransactionRecord> transactions = <TransactionRecord>[];
 
   @override
-  Future<List<TransactionRecord>> getTransactions() async => transactions;
+  Future<Either<Failure, List<TransactionRecord>>> getTransactions() async =>
+      right(transactions);
 
   @override
-  Future<void> saveTransaction(TransactionRecord record) async {
+  Future<Either<Failure, Unit>> saveTransaction(
+    TransactionRecord record,
+  ) async {
     savedRecords.add(record);
+    return right(unit);
   }
 }
 
@@ -50,15 +57,19 @@ void main() {
       );
 
       expect(repository.savedRecords.length, 1);
-      expect(repository.savedRecords.single, result);
-      expect(result.cart, cart);
-      expect(result.paymentMethod, 'cash');
-      expect(result.subtotal, 9.75);
-      expect(result.discountType, DiscountType.fixed);
-      expect(result.discountValue, 2.00);
-      expect(result.discountAmount, 2.00);
-      expect(result.total, closeTo(7.75, 0.0001));
-      expect(result.id, isNotEmpty);
+      expect(
+        result.fold((_) => null, (record) => record),
+        repository.savedRecords.single,
+      );
+      final record = result.fold((_) => null, (record) => record)!;
+      expect(record.cart, cart);
+      expect(record.paymentMethod, 'cash');
+      expect(record.subtotal, 9.75);
+      expect(record.discountType, DiscountType.fixed);
+      expect(record.discountValue, 2.00);
+      expect(record.discountAmount, 2.00);
+      expect(record.total, closeTo(7.75, 0.0001));
+      expect(record.id, isNotEmpty);
     });
   });
 }

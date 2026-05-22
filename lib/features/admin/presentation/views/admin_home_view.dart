@@ -85,14 +85,18 @@ class _AdminOverviewTabState extends State<_AdminOverviewTab> {
   }
 
   Future<_AdminOverviewData> _loadOverview() async {
-    final results = await Future.wait<dynamic>([
-      sl<SalesRepository>().getTransactions(),
-      sl<ProductRepository>().getProducts(),
-    ]);
+    final transactionsResult = await sl<SalesRepository>().getTransactions();
+    final productsResult = await sl<ProductRepository>().getProducts();
 
     return _AdminOverviewData(
-      transactions: results[0] as List<TransactionRecord>,
-      products: results[1] as List<Product>,
+      transactions: transactionsResult.fold(
+        (_) => const <TransactionRecord>[],
+        (transactions) => transactions,
+      ),
+      products: productsResult.fold(
+        (_) => const <Product>[],
+        (products) => products,
+      ),
     );
   }
 
@@ -996,7 +1000,7 @@ class _SalesTabState extends State<_SalesTab> {
   @override
   void initState() {
     super.initState();
-    _transactionsFuture = sl<SalesRepository>().getTransactions();
+    _transactionsFuture = _loadTransactions();
   }
 
   @override
@@ -1007,9 +1011,17 @@ class _SalesTabState extends State<_SalesTab> {
 
   Future<void> _refreshTransactions() async {
     setState(() {
-      _transactionsFuture = sl<SalesRepository>().getTransactions();
+      _transactionsFuture = _loadTransactions();
     });
     await _transactionsFuture;
+  }
+
+  Future<List<TransactionRecord>> _loadTransactions() async {
+    final result = await sl<SalesRepository>().getTransactions();
+    return result.fold(
+      (_) => const <TransactionRecord>[],
+      (transactions) => transactions,
+    );
   }
 
   void _setDateFilter(_SalesDateFilter filter) {
@@ -2204,7 +2216,7 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
   @override
   void initState() {
     super.initState();
-    _productsFuture = sl<ProductRepository>().getProducts();
+    _productsFuture = _loadProducts();
   }
 
   @override
@@ -2282,8 +2294,7 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
                           );
                           if (context.mounted) {
                             setState(() {
-                              _productsFuture = sl<ProductRepository>()
-                                  .getProducts();
+                              _productsFuture = _loadProducts();
                             });
                           }
                         },
@@ -2298,6 +2309,11 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
         );
       },
     );
+  }
+
+  Future<List<Product>> _loadProducts() async {
+    final result = await sl<ProductRepository>().getProducts();
+    return result.fold((_) => const <Product>[], (products) => products);
   }
 
   Future<void> _addProduct(BuildContext context) async {
@@ -2332,7 +2348,7 @@ class _ProductManagementTabState extends State<_ProductManagementTab> {
       _priceController.clear();
       _categoryController.text = Product.defaultCategory;
       setState(() {
-        _productsFuture = sl<ProductRepository>().getProducts();
+        _productsFuture = _loadProducts();
       });
 
       ScaffoldMessenger.of(

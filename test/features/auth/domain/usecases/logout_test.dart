@@ -1,5 +1,7 @@
+import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/features/auth/domain/entities/app_user.dart';
 import 'package:flutter_pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/logout.dart';
@@ -10,23 +12,26 @@ class _FakeAuthRepository implements AuthRepository {
   int logoutCalls = 0;
 
   @override
-  Future<AppUser?> getCurrentUser() async {
+  Future<Either<Failure, AppUser?>> getCurrentUser() async {
     getCurrentUserCalls += 1;
-    return null;
+    return right(null);
   }
 
   @override
-  Future<AppUser> login({
+  Future<Either<Failure, AppUser>> login({
     required String username,
     required String password,
   }) async {
     loginCalls += 1;
-    return AppUser(id: 'unused', username: username, role: UserRole.seller);
+    return right(
+      AppUser(id: 'unused', username: username, role: UserRole.seller),
+    );
   }
 
   @override
-  Future<void> logout() async {
+  Future<Either<Failure, Unit>> logout() async {
     logoutCalls += 1;
+    return right(unit);
   }
 }
 
@@ -36,7 +41,9 @@ void main() {
       final repository = _FakeAuthRepository();
       final useCase = Logout(repository);
 
-      await useCase();
+      final result = await useCase();
+
+      expect(result.isRight(), true);
 
       expect(repository.logoutCalls, 1);
       expect(repository.getCurrentUserCalls, 0);

@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/core/logging/correlation_id.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
@@ -39,32 +40,42 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     RestoreCartRequested event,
     Emitter<CartState> emit,
   ) async {
-    try {
-      final persistedState = await _cartRepository.loadCartState();
-      if (persistedState == null) {
-        return;
-      }
-
-      emit(
-        state.copyWith(
-          cart: persistedState.cart,
-          discount: persistedState.discount,
-          totals: _calculateTotal(
-            persistedState.cart,
-            discount: persistedState.discount,
+    final result = await _cartRepository.loadCartState();
+    result.fold(
+      (failure) {
+        _logger.error(
+          feature: 'cart',
+          action: 'restore',
+          outcome: 'failed',
+          errorCode: 'CART_RESTORE_FAILED',
+          error: failure,
+          context: <String, Object?>{'message': failure.message},
+        );
+        emit(
+          state.copyWith(
+            checkoutStatus: CheckoutStatus.failure,
+            failure: failure,
           ),
-        ),
-      );
-    } catch (error, stackTrace) {
-      _logger.error(
-        feature: 'cart',
-        action: 'restore',
-        outcome: 'failed',
-        errorCode: 'CART_RESTORE_FAILED',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+        );
+      },
+      (persistedState) {
+        if (persistedState == null) {
+          return;
+        }
+
+        emit(
+          state.copyWith(
+            cart: persistedState.cart,
+            discount: persistedState.discount,
+            totals: _calculateTotal(
+              persistedState.cart,
+              discount: persistedState.discount,
+            ),
+            clearFailure: true,
+          ),
+        );
+      },
+    );
   }
 
   void _onAddItem(AddItem event, Emitter<CartState> emit) {
@@ -86,7 +97,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         totals: _calculateTotal(const CartEntity()),
         discount: const CartDiscount.none(),
         checkoutStatus: CheckoutStatus.idle,
-        clearErrorMessage: true,
+        clearFailure: true,
       ),
     );
     _clearPersistedCartState();
@@ -113,7 +124,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       emit(
         state.copyWith(
           checkoutStatus: CheckoutStatus.failure,
-          errorMessage: validationError,
+          failure: GenericValidationFailure(validationError),
         ),
       );
       return;
@@ -124,67 +135,69 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     emit(
       state.copyWith(
         checkoutStatus: CheckoutStatus.submitting,
-        clearErrorMessage: true,
+        clearFailure: true,
       ),
     );
 
-    try {
-      final record = await _saveTransaction(
-        SaveTransactionParams(
-          cart: state.cart,
-          totals: state.totals,
-          discount: state.discount,
-          paymentMethod: event.paymentMethod,
-        ),
-      );
+    final result = await _saveTransaction(
+      SaveTransactionParams(
+        cart: state.cart,
+        totals: state.totals,
+        discount: state.discount,
+        paymentMethod: event.paymentMethod,
+      ),
+    );
 
-      _logger.info(
-        feature: 'checkout',
-        action: 'save_transaction',
-        outcome: 'success',
-        correlationId: correlationId,
-        context: <String, Object?>{
-          'paymentMethod': event.paymentMethod,
-          'itemCount': state.cart.items.length,
-          'total': state.totals.total,
-        },
-      );
+    result.fold(
+      (failure) {
+        _logger.error(
+          feature: 'checkout',
+          action: 'save_transaction',
+          outcome: 'failed',
+          correlationId: correlationId,
+          errorCode: 'CHECKOUT_SAVE_FAILED',
+          context: <String, Object?>{
+            'paymentMethod': event.paymentMethod,
+            'itemCount': state.cart.items.length,
+            'total': state.totals.total,
+            'message': failure.message,
+          },
+          error: failure,
+        );
+        emit(
+          state.copyWith(
+            checkoutStatus: CheckoutStatus.failure,
+            failure: failure,
+          ),
+        );
+      },
+      (record) {
+        _logger.info(
+          feature: 'checkout',
+          action: 'save_transaction',
+          outcome: 'success',
+          correlationId: correlationId,
+          context: <String, Object?>{
+            'paymentMethod': event.paymentMethod,
+            'itemCount': state.cart.items.length,
+            'total': state.totals.total,
+          },
+        );
 
-      const emptyCart = CartEntity();
-      emit(
-        state.copyWith(
-          cart: emptyCart,
-          totals: _calculateTotal(emptyCart),
-          discount: const CartDiscount.none(),
-          checkoutStatus: CheckoutStatus.success,
-          lastTransaction: record,
-          clearErrorMessage: true,
-        ),
-      );
-      _clearPersistedCartState();
-    } catch (error, stackTrace) {
-      _logger.error(
-        feature: 'checkout',
-        action: 'save_transaction',
-        outcome: 'failed',
-        correlationId: correlationId,
-        errorCode: 'CHECKOUT_SAVE_FAILED',
-        context: <String, Object?>{
-          'paymentMethod': event.paymentMethod,
-          'itemCount': state.cart.items.length,
-          'total': state.totals.total,
-        },
-        error: error,
-        stackTrace: stackTrace,
-      );
-      emit(
-        state.copyWith(
-          checkoutStatus: CheckoutStatus.failure,
-          errorMessage:
-              'Checkout failed. Please verify local storage and try again.',
-        ),
-      );
-    }
+        const emptyCart = CartEntity();
+        emit(
+          state.copyWith(
+            cart: emptyCart,
+            totals: _calculateTotal(emptyCart),
+            discount: const CartDiscount.none(),
+            checkoutStatus: CheckoutStatus.success,
+            lastTransaction: record,
+            clearFailure: true,
+          ),
+        );
+        _clearPersistedCartState();
+      },
+    );
   }
 
   String? _checkoutValidationError(String paymentMethod) {
@@ -211,7 +224,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     emit(
       state.copyWith(
         checkoutStatus: CheckoutStatus.idle,
-        clearErrorMessage: true,
+        clearFailure: true,
         clearLastTransaction: true,
       ),
     );
@@ -223,7 +236,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         discount: event.discount,
         totals: _calculateTotal(state.cart, discount: event.discount),
         checkoutStatus: CheckoutStatus.idle,
-        clearErrorMessage: true,
+        clearFailure: true,
       ),
     );
     _persistCartState(state.cart, event.discount);
@@ -235,38 +248,39 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         cart: cart,
         totals: _calculateTotal(cart, discount: state.discount),
         checkoutStatus: CheckoutStatus.idle,
-        clearErrorMessage: true,
+        clearFailure: true,
       ),
     );
   }
 
   Future<void> _persistCartState(CartEntity cart, CartDiscount discount) async {
-    try {
-      await _cartRepository.saveCartState(cart: cart, discount: discount);
-    } catch (error, stackTrace) {
+    final result = await _cartRepository.saveCartState(
+      cart: cart,
+      discount: discount,
+    );
+    result.fold((failure) {
       _logger.error(
         feature: 'cart',
         action: 'persist',
         outcome: 'failed',
         errorCode: 'CART_PERSIST_FAILED',
-        error: error,
-        stackTrace: stackTrace,
+        error: failure,
+        context: <String, Object?>{'message': failure.message},
       );
-    }
+    }, (_) {});
   }
 
   Future<void> _clearPersistedCartState() async {
-    try {
-      await _cartRepository.clearCartState();
-    } catch (error, stackTrace) {
+    final result = await _cartRepository.clearCartState();
+    result.fold((failure) {
       _logger.error(
         feature: 'cart',
         action: 'clear_persisted',
         outcome: 'failed',
         errorCode: 'CART_CLEAR_PERSISTED_FAILED',
-        error: error,
-        stackTrace: stackTrace,
+        error: failure,
+        context: <String, Object?>{'message': failure.message},
       );
-    }
+    }, (_) {});
   }
 }

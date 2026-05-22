@@ -83,38 +83,33 @@ class DriftCartLocalDataSource implements CartLocalDataSource {
       return null;
     }
 
-    try {
-      final items = itemRows
-          .map((row) {
-            return CartItemEntity(
-              product: Product(
-                id: row.read<String>('product_id'),
-                name: row.read<String>('name'),
-                price: row.read<double>('price'),
-                category: row.read<String>('category'),
-              ),
-              quantity: row.read<int>('quantity'),
-            );
-          })
-          .where((item) => item.quantity > 0)
-          .toList(growable: false);
+    final items = itemRows
+        .map((row) {
+          return CartItemEntity(
+            product: Product(
+              id: row.read<String>('product_id'),
+              name: row.read<String>('name'),
+              price: row.read<double>('price'),
+              category: row.read<String>('category'),
+            ),
+            quantity: row.read<int>('quantity'),
+          );
+        })
+        .where((item) => item.quantity > 0)
+        .toList(growable: false);
 
-      final stateRow = stateRows.isEmpty ? null : stateRows.first;
-      final discountTypeName = stateRow?.read<String>('discount_type');
-      final discountType = DiscountType.values.firstWhere(
-        (value) => value.name == discountTypeName,
-        orElse: () => DiscountType.fixed,
-      );
-      final discountValue = stateRow?.read<double>('discount_value') ?? 0;
+    final stateRow = stateRows.isEmpty ? null : stateRows.first;
+    final discountTypeName = stateRow?.read<String>('discount_type');
+    final discountType = DiscountType.values.firstWhere(
+      (value) => value.name == discountTypeName,
+      orElse: () => DiscountType.fixed,
+    );
+    final discountValue = stateRow?.read<double>('discount_value') ?? 0;
 
-      return CartPersistenceState(
-        cart: CartEntity(items: items),
-        discount: CartDiscount(type: discountType, value: discountValue),
-      );
-    } catch (_) {
-      await clearCartState();
-      return null;
-    }
+    return CartPersistenceState(
+      cart: CartEntity(items: items),
+      discount: CartDiscount(type: discountType, value: discountValue),
+    );
   }
 
   @override

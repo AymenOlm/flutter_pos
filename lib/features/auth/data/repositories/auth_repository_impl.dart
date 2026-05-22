@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:dartz/dartz.dart';
+
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/features/auth/data/datasources/auth_session_local_data_source.dart';
 import 'package:flutter_pos/features/auth/data/datasources/auth_user_local_data_source.dart';
 import 'package:flutter_pos/features/auth/data/security/password_hasher.dart';
@@ -40,83 +43,96 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<AppUser?> getCurrentUser() async {
-    await _ensureSeedUsers();
-    final session = await sessionLocalDataSource.readSession();
-    if (session == null || session.token.isEmpty) {
-      return null;
-    }
+  Future<Either<Failure, AppUser?>> getCurrentUser() async {
+    try {
+      await _ensureSeedUsers();
+      final session = await sessionLocalDataSource.readSession();
+      if (session == null || session.token.isEmpty) {
+        return right(null);
+      }
 
-    final record = await userLocalDataSource.findById(session.userId);
-    if (record == null) {
-      await sessionLocalDataSource.clearSession();
-      return null;
-    }
+      final record = await userLocalDataSource.findById(session.userId);
+      if (record == null) {
+        await sessionLocalDataSource.clearSession();
+        return right(null);
+      }
 
-    return record.toAppUser();
+      return right(record.toAppUser());
+    } catch (_) {
+      return left(const DatabaseFailure('Unable to load the current session.'));
+    }
   }
 
   @override
-  Future<AppUser> login({
+  Future<Either<Failure, AppUser>> login({
     required String username,
     required String password,
   }) async {
-    await _ensureSeedUsers();
-    final normalized = username.trim().toLowerCase();
-    final user = await userLocalDataSource.findByUsername(normalized);
+    try {
+      await _ensureSeedUsers();
+      final normalized = username.trim().toLowerCase();
+      final user = await userLocalDataSource.findByUsername(normalized);
 
-    if (user == null) {
-      throw const InvalidCredentialsFailure();
-    }
+      if (user == null) {
+        return left(const InvalidCredentialsFailure());
+      }
 
-    final nowEpochMs = _now().millisecondsSinceEpoch;
-    final lockoutUntil = user.lockoutUntilEpochMs;
-    if (lockoutUntil != null && lockoutUntil > nowEpochMs) {
-      final remainingSeconds = ((lockoutUntil - nowEpochMs) / 1000).ceil();
-      throw AuthLockoutFailure(remainingSeconds: remainingSeconds);
-    }
+      final nowEpochMs = _now().millisecondsSinceEpoch;
+      final lockoutUntil = user.lockoutUntilEpochMs;
+      if (lockoutUntil != null && lockoutUntil > nowEpochMs) {
+        final remainingSeconds = ((lockoutUntil - nowEpochMs) / 1000).ceil();
+        return left(AuthLockoutFailure(remainingSeconds: remainingSeconds));
+      }
 
-    final isValid = await passwordHasher.verify(
-      password: password,
-      encodedHash: user.passwordHash,
-    );
+      final isValid = await passwordHasher.verify(
+        password: password,
+        encodedHash: user.passwordHash,
+      );
 
-    if (!isValid) {
-      final nextFailedAttempts = user.failedLoginAttempts + 1;
+      if (!isValid) {
+        final nextFailedAttempts = user.failedLoginAttempts + 1;
 
-      if (nextFailedAttempts >= _maxFailedAttempts) {
-        final lockedUntilEpochMs = _now()
-            .add(_lockoutDuration)
-            .millisecondsSinceEpoch;
+        if (nextFailedAttempts >= _maxFailedAttempts) {
+          final lockedUntilEpochMs = _now()
+              .add(_lockoutDuration)
+              .millisecondsSinceEpoch;
+          await userLocalDataSource.updateFailedAttemptState(
+            userId: user.id,
+            failedAttempts: nextFailedAttempts,
+            lockoutUntilEpochMs: lockedUntilEpochMs,
+          );
+          return left(const AuthLockoutFailure(remainingSeconds: 30));
+        }
+
         await userLocalDataSource.updateFailedAttemptState(
           userId: user.id,
           failedAttempts: nextFailedAttempts,
-          lockoutUntilEpochMs: lockedUntilEpochMs,
         );
-        throw const AuthLockoutFailure(remainingSeconds: 30);
+        return left(const InvalidCredentialsFailure());
       }
 
-      await userLocalDataSource.updateFailedAttemptState(
-        userId: user.id,
-        failedAttempts: nextFailedAttempts,
+      await userLocalDataSource.resetFailedAttemptState(user.id);
+
+      final appUser = user.toAppUser();
+      final sessionToken = _generateSessionToken();
+      await sessionLocalDataSource.saveSession(
+        AuthSession(userId: appUser.id, token: sessionToken),
       );
-      throw const InvalidCredentialsFailure();
+
+      return right(appUser);
+    } catch (_) {
+      return left(const DatabaseFailure('Unable to complete login.'));
     }
-
-    await userLocalDataSource.resetFailedAttemptState(user.id);
-
-    final appUser = user.toAppUser();
-    final sessionToken = _generateSessionToken();
-    await sessionLocalDataSource.saveSession(
-      AuthSession(userId: appUser.id, token: sessionToken),
-    );
-
-    return appUser;
   }
 
   @override
-  Future<void> logout() {
-    return sessionLocalDataSource.clearSession();
+  Future<Either<Failure, Unit>> logout() async {
+    try {
+      await sessionLocalDataSource.clearSession();
+      return right(unit);
+    } catch (_) {
+      return left(const DatabaseFailure('Unable to sign out.'));
+    }
   }
 
   String _generateSessionToken() {

@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dartz/dartz.dart';
+
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/features/pos/data/models/product_model.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
@@ -14,13 +17,15 @@ class _FakeProductRepository implements ProductRepository {
   final List<Product> products;
 
   @override
-  Future<List<Product>> getProducts() async => products;
+  Future<Either<Failure, List<Product>>> getProducts() async => right(products);
 
   @override
-  Future<void> deleteProduct(String productId) async {}
+  Future<Either<Failure, Unit>> deleteProduct(String productId) async =>
+      right(unit);
 
   @override
-  Future<void> upsertProduct(Product product) async {}
+  Future<Either<Failure, Unit>> upsertProduct(Product product) async =>
+      right(unit);
 }
 
 void main() {

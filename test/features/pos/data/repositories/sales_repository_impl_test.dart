@@ -44,7 +44,9 @@ void main() {
         total: 3.85,
       );
 
-      await repository.saveTransaction(record);
+      final saveResult = await repository.saveTransaction(record);
+
+      expect(saveResult.isRight(), true);
 
       expect(localDataSource.savedRecords, [record]);
     });
@@ -69,7 +71,7 @@ void main() {
 
       final result = await repository.getTransactions();
 
-      expect(result, expected);
+      expect(result.fold((_) => null, (records) => records), expected);
     });
   });
 }

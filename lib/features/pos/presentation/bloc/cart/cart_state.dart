@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
@@ -12,7 +13,7 @@ class CartState extends Equatable {
     required this.totals,
     required this.discount,
     required this.checkoutStatus,
-    this.errorMessage,
+    this.failure,
     this.lastTransaction,
   });
 
@@ -32,7 +33,7 @@ class CartState extends Equatable {
   final CartTotals totals;
   final CartDiscount discount;
   final CheckoutStatus checkoutStatus;
-  final String? errorMessage;
+  final Failure? failure;
   final TransactionRecord? lastTransaction;
 
   CartState copyWith({
@@ -40,9 +41,9 @@ class CartState extends Equatable {
     CartTotals? totals,
     CartDiscount? discount,
     CheckoutStatus? checkoutStatus,
-    String? errorMessage,
+    Failure? failure,
     TransactionRecord? lastTransaction,
-    bool clearErrorMessage = false,
+    bool clearFailure = false,
     bool clearLastTransaction = false,
   }) {
     return CartState(
@@ -50,9 +51,7 @@ class CartState extends Equatable {
       totals: totals ?? this.totals,
       discount: discount ?? this.discount,
       checkoutStatus: checkoutStatus ?? this.checkoutStatus,
-      errorMessage: clearErrorMessage
-          ? null
-          : (errorMessage ?? this.errorMessage),
+      failure: clearFailure ? null : (failure ?? this.failure),
       lastTransaction: clearLastTransaction
           ? null
           : (lastTransaction ?? this.lastTransaction),
@@ -65,7 +64,7 @@ class CartState extends Equatable {
     totals,
     discount,
     checkoutStatus,
-    errorMessage,
+    failure,
     lastTransaction,
   ];
 }

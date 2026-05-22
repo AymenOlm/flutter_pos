@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 import 'package:flutter_pos/features/pos/domain/repositories/product_repository.dart';
@@ -28,38 +27,39 @@ class ProductCatalogBloc
   ) async {
     emit(state.copyWith(status: ProductCatalogStatus.loading));
 
-    try {
-      final products = await _repository.getProducts();
-      emit(
-        state.copyWith(
-          status: ProductCatalogStatus.loaded,
-          products: products,
-          filteredProducts: _applyFilters(
+    final result = await _repository.getProducts();
+    result.fold(
+      (failure) {
+        _logger.error(
+          feature: 'catalog',
+          action: 'load_products',
+          outcome: 'failed',
+          errorCode: 'CATALOG_LOAD_FAILED',
+          context: <String, Object?>{
+            'existingProductCount': state.products.length,
+            'message': failure.message,
+          },
+          error: failure,
+        );
+        emit(
+          state.copyWith(status: ProductCatalogStatus.error, failure: failure),
+        );
+      },
+      (products) {
+        emit(
+          state.copyWith(
+            status: ProductCatalogStatus.loaded,
             products: products,
-            query: state.query,
-            selectedCategory: state.selectedCategory,
+            filteredProducts: _applyFilters(
+              products: products,
+              query: state.query,
+              selectedCategory: state.selectedCategory,
+            ),
+            clearFailure: true,
           ),
-        ),
-      );
-    } catch (error, stackTrace) {
-      _logger.error(
-        feature: 'catalog',
-        action: 'load_products',
-        outcome: 'failed',
-        errorCode: 'CATALOG_LOAD_FAILED',
-        context: <String, Object?>{
-          'existingProductCount': state.products.length,
-        },
-        error: error,
-        stackTrace: stackTrace,
-      );
-      emit(
-        state.copyWith(
-          status: ProductCatalogStatus.error,
-          message: 'Unable to load products.',
-        ),
-      );
-    }
+        );
+      },
+    );
   }
 
   void _onSearchProducts(

@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dartz/dartz.dart';
+
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/core/logging/app_logger.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/cart_persistence_state.dart';
@@ -19,11 +22,13 @@ class _FakeSaveTransaction extends SaveTransaction {
 
 class _FakeSalesRepository implements SalesRepository {
   @override
-  Future<void> saveTransaction(TransactionRecord record) async {}
+  Future<Either<Failure, Unit>> saveTransaction(
+    TransactionRecord record,
+  ) async => right(unit);
 
   @override
-  Future<List<TransactionRecord>> getTransactions() async =>
-      <TransactionRecord>[];
+  Future<Either<Failure, List<TransactionRecord>>> getTransactions() async =>
+      right(<TransactionRecord>[]);
 }
 
 class _FakeCartRepository implements CartRepository {
@@ -33,22 +38,24 @@ class _FakeCartRepository implements CartRepository {
   int clearCalls = 0;
 
   @override
-  Future<void> clearCartState() async {
+  Future<Either<Failure, Unit>> clearCartState() async {
     clearCalls += 1;
+    return right(unit);
   }
 
   @override
-  Future<CartPersistenceState?> loadCartState() async {
-    return loadedState;
+  Future<Either<Failure, CartPersistenceState?>> loadCartState() async {
+    return right(loadedState);
   }
 
   @override
-  Future<void> saveCartState({
+  Future<Either<Failure, Unit>> saveCartState({
     required CartEntity cart,
     required CartDiscount discount,
   }) async {
     savedCart = cart;
     savedDiscount = discount;
+    return right(unit);
   }
 }
 
@@ -159,8 +166,12 @@ void main() {
 
         expect(bloc.state.checkoutStatus, CheckoutStatus.failure);
         expect(
-          bloc.state.errorMessage,
-          'Selected payment method is not supported. Use Cash or Card.',
+          bloc.state.failure,
+          isA<GenericValidationFailure>().having(
+            (failure) => failure.message,
+            'message',
+            'Selected payment method is not supported. Use Cash or Card.',
+          ),
         );
         await bloc.close();
       },

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/features/pos/data/datasources/product_local_data_source.dart';
 import 'package:flutter_pos/features/pos/data/datasources/product_remote_data_source.dart';
 import 'package:flutter_pos/features/pos/data/models/product_model.dart';
@@ -71,7 +72,10 @@ void main() {
 
         final result = await repository.getProducts();
 
-        expect(result, localDataSource.cachedProducts);
+        expect(
+          result.fold((_) => null, (products) => products),
+          localDataSource.cachedProducts,
+        );
         expect(remoteDataSource.fetchCalls, 1);
         expect(localDataSource.cacheInvocations, [remoteDataSource.products]);
         expect(localDataSource.getCachedProductsCalls, 1);
@@ -94,7 +98,10 @@ void main() {
 
         final result = await repository.getProducts();
 
-        expect(result, remoteDataSource.products);
+        expect(
+          result.fold((_) => null, (products) => products),
+          remoteDataSource.products,
+        );
         expect(localDataSource.getCachedProductsCalls, 1);
       },
     );
@@ -115,7 +122,10 @@ void main() {
 
         final result = await repository.getProducts();
 
-        expect(result, localDataSource.cachedProducts);
+        expect(
+          result.fold((_) => null, (products) => products),
+          localDataSource.cachedProducts,
+        );
         expect(remoteDataSource.fetchCalls, 1);
         expect(localDataSource.getCachedProductsCalls, 1);
       },
@@ -133,7 +143,12 @@ void main() {
           localDataSource: localDataSource,
         );
 
-        await expectLater(repository.getProducts, throwsA(isA<Exception>()));
+        final result = await repository.getProducts();
+
+        expect(
+          result.fold((failure) => failure, (_) => null),
+          isA<NetworkFailure>(),
+        );
         expect(localDataSource.getCachedProductsCalls, 1);
       },
     );

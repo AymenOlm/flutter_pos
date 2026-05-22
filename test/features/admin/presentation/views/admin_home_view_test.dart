@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dartz/dartz.dart';
+
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/features/auth/domain/entities/app_user.dart';
 import 'package:flutter_pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:flutter_pos/features/auth/domain/usecases/get_current_user.dart';
@@ -24,17 +27,18 @@ class _FakeAuthRepository implements AuthRepository {
   _FakeAuthRepository();
 
   @override
-  Future<AppUser?> getCurrentUser() async => null;
+  Future<Either<Failure, AppUser?>> getCurrentUser() async => right(null);
 
   @override
-  Future<AppUser> login({required String username, required String password}) {
-    return Future<AppUser>.value(
-      AppUser(id: 'u-1', username: username, role: UserRole.admin),
-    );
+  Future<Either<Failure, AppUser>> login({
+    required String username,
+    required String password,
+  }) async {
+    return right(AppUser(id: 'u-1', username: username, role: UserRole.admin));
   }
 
   @override
-  Future<void> logout() async {}
+  Future<Either<Failure, Unit>> logout() async => right(unit);
 }
 
 class _FakeProductRepository implements ProductRepository {
@@ -43,13 +47,15 @@ class _FakeProductRepository implements ProductRepository {
   final List<Product> products;
 
   @override
-  Future<List<Product>> getProducts() async => products;
+  Future<Either<Failure, List<Product>>> getProducts() async => right(products);
 
   @override
-  Future<void> deleteProduct(String productId) async {}
+  Future<Either<Failure, Unit>> deleteProduct(String productId) async =>
+      right(unit);
 
   @override
-  Future<void> upsertProduct(Product product) async {}
+  Future<Either<Failure, Unit>> upsertProduct(Product product) async =>
+      right(unit);
 }
 
 class _FakeSalesLocalDataSource implements SalesLocalDataSource {

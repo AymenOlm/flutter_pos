@@ -1,4 +1,7 @@
 import 'package:equatable/equatable.dart';
+import 'package:dartz/dartz.dart';
+
+import 'package:flutter_pos/core/errors/failures.dart';
 
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/transaction_record.dart';
@@ -27,7 +30,9 @@ class SaveTransaction {
 
   final SalesRepository salesRepository;
 
-  Future<TransactionRecord> call(SaveTransactionParams params) async {
+  Future<Either<Failure, TransactionRecord>> call(
+    SaveTransactionParams params,
+  ) async {
     final record = TransactionRecord(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       createdAt: DateTime.now(),
@@ -40,7 +45,7 @@ class SaveTransaction {
       total: params.totals.total,
     );
 
-    await salesRepository.saveTransaction(record);
-    return record;
+    final result = await salesRepository.saveTransaction(record);
+    return result.fold((failure) => left(failure), (_) => right(record));
   }
 }

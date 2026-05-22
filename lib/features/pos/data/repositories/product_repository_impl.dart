@@ -1,3 +1,6 @@
+import 'package:dartz/dartz.dart';
+
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/features/pos/data/datasources/product_remote_data_source.dart';
 import 'package:flutter_pos/features/pos/data/datasources/product_local_data_source.dart';
 import 'package:flutter_pos/features/pos/data/models/product_model.dart';
@@ -14,40 +17,50 @@ class ProductRepositoryImpl implements ProductRepository {
   final ProductLocalDataSource localDataSource;
 
   @override
-  Future<List<Product>> getProducts() async {
+  Future<Either<Failure, List<Product>>> getProducts() async {
     try {
       final remoteProducts = await remoteDataSource.fetchProducts();
       await localDataSource.cacheProducts(remoteProducts);
       final cachedProducts = await localDataSource.getCachedProducts();
       if (cachedProducts.isNotEmpty) {
-        return cachedProducts;
+        return right(cachedProducts);
       }
 
-      return remoteProducts;
+      return right(remoteProducts);
     } catch (_) {
       final cachedProducts = await localDataSource.getCachedProducts();
       if (cachedProducts.isNotEmpty) {
-        return cachedProducts;
+        return right(cachedProducts);
       }
 
-      rethrow;
+      return left(const NetworkFailure('Unable to load products.'));
     }
   }
 
   @override
-  Future<void> upsertProduct(Product product) {
-    return localDataSource.upsertProduct(
-      ProductModel(
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        category: product.category,
-      ),
-    );
+  Future<Either<Failure, Unit>> upsertProduct(Product product) async {
+    try {
+      await localDataSource.upsertProduct(
+        ProductModel(
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          category: product.category,
+        ),
+      );
+      return right(unit);
+    } catch (_) {
+      return left(const DatabaseFailure('Unable to save the product.'));
+    }
   }
 
   @override
-  Future<void> deleteProduct(String productId) {
-    return localDataSource.deleteProduct(productId);
+  Future<Either<Failure, Unit>> deleteProduct(String productId) async {
+    try {
+      await localDataSource.deleteProduct(productId);
+      return right(unit);
+    } catch (_) {
+      return left(const DatabaseFailure('Unable to delete the product.'));
+    }
   }
 }

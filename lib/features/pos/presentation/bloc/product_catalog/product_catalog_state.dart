@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 
 enum ProductCatalogStatus { initial, loading, loaded, error }
@@ -11,7 +12,7 @@ class ProductCatalogState extends Equatable {
     required this.filteredProducts,
     required this.query,
     required this.selectedCategory,
-    this.message,
+    this.failure,
   });
 
   factory ProductCatalogState.initial() {
@@ -29,7 +30,7 @@ class ProductCatalogState extends Equatable {
   final List<Product> filteredProducts;
   final String query;
   final String selectedCategory;
-  final String? message;
+  final Failure? failure;
 
   ProductCatalogState copyWith({
     ProductCatalogStatus? status,
@@ -37,7 +38,8 @@ class ProductCatalogState extends Equatable {
     List<Product>? filteredProducts,
     String? query,
     String? selectedCategory,
-    String? message,
+    Failure? failure,
+    bool clearFailure = false,
   }) {
     return ProductCatalogState(
       status: status ?? this.status,
@@ -45,7 +47,7 @@ class ProductCatalogState extends Equatable {
       filteredProducts: filteredProducts ?? this.filteredProducts,
       query: query ?? this.query,
       selectedCategory: selectedCategory ?? this.selectedCategory,
-      message: message,
+      failure: clearFailure ? null : (failure ?? this.failure),
     );
   }
 
@@ -56,6 +58,6 @@ class ProductCatalogState extends Equatable {
     filteredProducts,
     query,
     selectedCategory,
-    message,
+    failure,
   ];
 }

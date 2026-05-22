@@ -1,5 +1,7 @@
+import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/features/auth/domain/entities/app_user.dart';
 import 'package:flutter_pos/features/auth/domain/errors/auth_failures.dart';
 import 'package:flutter_pos/features/auth/domain/repositories/auth_repository.dart';
@@ -16,39 +18,39 @@ class _FakeAuthRepository implements AuthRepository {
 
   AppUser? currentUser;
   AppUser? loginResult;
-  Exception? loginError;
+  Failure? loginFailure;
   int getCurrentUserCalls = 0;
   int loginCalls = 0;
   int logoutCalls = 0;
 
   @override
-  Future<AppUser?> getCurrentUser() async {
+  Future<Either<Failure, AppUser?>> getCurrentUser() async {
     getCurrentUserCalls += 1;
-    return currentUser;
+    return right(currentUser);
   }
 
   @override
-  Future<AppUser> login({
+  Future<Either<Failure, AppUser>> login({
     required String username,
     required String password,
   }) async {
     loginCalls += 1;
 
-    if (loginError != null) {
-      throw loginError!;
+    if (loginFailure != null) {
+      return left(loginFailure!);
     }
 
-    if (loginResult != null) {
-      return loginResult!;
-    }
-
-    return AppUser(id: 'fallback', username: username, role: UserRole.seller);
+    return right(
+      loginResult ??
+          AppUser(id: 'fallback', username: username, role: UserRole.seller),
+    );
   }
 
   @override
-  Future<void> logout() async {
+  Future<Either<Failure, Unit>> logout() async {
     logoutCalls += 1;
     currentUser = null;
+    return right(unit);
   }
 }
 
@@ -100,7 +102,7 @@ void main() {
 
     test('emits failure then unauthenticated when login fails', () async {
       final repository = _FakeAuthRepository()
-        ..loginError = const InvalidCredentialsFailure();
+        ..loginFailure = const InvalidCredentialsFailure();
       final bloc = AuthBloc(
         getCurrentUser: GetCurrentUser(repository),
         login: Login(repository, const ValidateCredentials()),
@@ -119,9 +121,9 @@ void main() {
           isA<AuthState>()
               .having((state) => state.status, 'status', AuthStatus.failure)
               .having(
-                (state) => state.errorMessage,
-                'errorMessage',
-                'Invalid username or password.',
+                (state) => state.failure,
+                'failure',
+                isA<InvalidCredentialsFailure>(),
               ),
           isA<AuthState>().having(
             (state) => state.status,
@@ -136,7 +138,7 @@ void main() {
       await expectation;
 
       expect(bloc.state.status, AuthStatus.unauthenticated);
-      expect(bloc.state.errorMessage, 'Invalid username or password.');
+      expect(bloc.state.failure, isNull);
       expect(repository.loginCalls, 1);
     });
 

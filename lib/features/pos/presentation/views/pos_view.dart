@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:flutter_pos/features/pos/domain/entities/cart_entity.dart';
 import 'package:flutter_pos/features/pos/domain/entities/product.dart';
 import 'package:flutter_pos/features/pos/domain/usecases/calculate_total.dart';
@@ -25,10 +24,10 @@ class POSView extends StatelessWidget {
           previous.checkoutStatus != current.checkoutStatus,
       listener: (context, state) async {
         if (state.checkoutStatus == CheckoutStatus.failure &&
-            state.errorMessage != null) {
+            state.failure != null) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+          ).showSnackBar(SnackBar(content: Text(state.failure!.message)));
           context.read<CartBloc>().add(const CheckoutStatusReset());
           return;
         }
@@ -123,7 +122,9 @@ class _ProductPanel extends StatelessWidget {
 
                 if (state.status == ProductCatalogStatus.error) {
                   return Center(
-                    child: Text(state.message ?? 'Something went wrong.'),
+                    child: Text(
+                      state.failure?.message ?? 'Something went wrong.',
+                    ),
                   );
                 }
 

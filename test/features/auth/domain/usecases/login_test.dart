@@ -1,5 +1,7 @@
+import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_pos/core/errors/failures.dart';
 import 'package:flutter_pos/features/auth/domain/entities/app_user.dart';
 import 'package:flutter_pos/features/auth/domain/errors/auth_failures.dart';
 import 'package:flutter_pos/features/auth/domain/repositories/auth_repository.dart';
@@ -9,17 +11,18 @@ import 'package:flutter_pos/features/auth/domain/usecases/validate_credentials.d
 class _FakeAuthRepository implements AuthRepository {
   AppUser? currentUser;
   AppUser? loginResult;
-  Exception? loginError;
+  Failure? loginFailure;
   String? lastUsername;
   String? lastPassword;
   int loginCalls = 0;
   int logoutCalls = 0;
 
   @override
-  Future<AppUser?> getCurrentUser() async => currentUser;
+  Future<Either<Failure, AppUser?>> getCurrentUser() async =>
+      right(currentUser);
 
   @override
-  Future<AppUser> login({
+  Future<Either<Failure, AppUser>> login({
     required String username,
     required String password,
   }) async {
@@ -27,16 +30,17 @@ class _FakeAuthRepository implements AuthRepository {
     lastUsername = username;
     lastPassword = password;
 
-    if (loginError != null) {
-      throw loginError!;
+    if (loginFailure != null) {
+      return left(loginFailure!);
     }
 
-    return loginResult!;
+    return right(loginResult!);
   }
 
   @override
-  Future<void> logout() async {
+  Future<Either<Failure, Unit>> logout() async {
     logoutCalls += 1;
+    return right(unit);
   }
 }
 
@@ -57,24 +61,23 @@ void main() {
         final useCase = Login(repository, validator);
         final result = await useCase(username: 'admin', password: 'admin123');
 
-        expect(result, expectedUser);
+        expect(result.fold((_) => null, (user) => user), expectedUser);
         expect(repository.loginCalls, 1);
         expect(repository.lastUsername, 'admin');
         expect(repository.lastPassword, 'admin123');
       },
     );
 
-    test('rethrows repository login failures', () async {
+    test('returns repository login failures', () async {
       final repository = _FakeAuthRepository();
-      repository.loginError = Exception('Invalid credentials');
+      repository.loginFailure = const InvalidCredentialsFailure();
       const validator = ValidateCredentials();
 
       final useCase = Login(repository, validator);
 
-      await expectLater(
-        () => useCase(username: 'admin', password: 'wrong'),
-        throwsA(isA<Exception>()),
-      );
+      final result = await useCase(username: 'admin', password: 'wrong');
+
+      expect(result.isLeft(), true);
       expect(repository.loginCalls, 1);
     });
 
@@ -83,9 +86,12 @@ void main() {
       const validator = ValidateCredentials();
       final useCase = Login(repository, validator);
 
-      await expectLater(
-        () => useCase(username: '   ', password: 'admin123'),
-        throwsA(isA<InvalidCredentialInputFailure>()),
+      final result = await useCase(username: '   ', password: 'admin123');
+
+      expect(result.isLeft(), true);
+      expect(
+        result.fold((failure) => failure, (_) => null),
+        isA<InvalidCredentialInputFailure>(),
       );
 
       expect(repository.loginCalls, 0);
